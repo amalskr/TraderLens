@@ -12,9 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.ceylonapz.traderlens.presentation.theme.TraderLensTheme
 
-/**
- * Root composable. Navigation 3 (Trade and History screens) will be hosted here.
- */
 @Composable
 fun TraderLensApp() {
     Scaffold { innerPadding ->
