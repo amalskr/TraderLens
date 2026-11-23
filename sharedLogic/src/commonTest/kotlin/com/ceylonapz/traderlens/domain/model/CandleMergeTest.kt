@@ -44,4 +44,13 @@ class CandleMergeTest {
         candles.merge(candle(1, close = 200))
         assertEquals(listOf(candle(1)), candles)
     }
+
+    @Test
+    fun mergeListReplacesOverlapAndAddsNew() {
+        val candles = listOf(candle(1), candle(2))
+        assertEquals(
+            listOf(candle(1), candle(2, close = 120), candle(3)),
+            candles.merge(listOf(candle(2, close = 120), candle(3))),
+        )
+    }
 }

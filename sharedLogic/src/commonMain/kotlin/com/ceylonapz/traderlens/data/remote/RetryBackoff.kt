@@ -7,8 +7,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retryWhen
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.milliseconds
 
-class ExponentialBackoff(
+class RetryBackoff(
     private val baseMillis: Long = 1_000,
     private val maxMillis: Long = 30_000,
     private val random: Random = Random.Default,
@@ -26,13 +27,13 @@ class ExponentialBackoff(
 }
 
 // Retries forever; the attempt count resets once a value arrives, so a healthy reconnect starts fast again.
-fun <T> Flow<T>.retryWithBackoff(backoff: ExponentialBackoff): Flow<T> = flow {
+fun <T> Flow<T>.retryWithBackoff(backoff: RetryBackoff): Flow<T> = flow {
     var attempt = 0
     emitAll(
         this@retryWithBackoff
             .onEach { attempt = 0 }
             .retryWhen { _, _ ->
-                delay(backoff.delayMillis(attempt++))
+                delay(backoff.delayMillis(attempt++).milliseconds)
                 true
             }
     )

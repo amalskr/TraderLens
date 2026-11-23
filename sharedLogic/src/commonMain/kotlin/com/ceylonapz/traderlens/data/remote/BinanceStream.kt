@@ -10,14 +10,17 @@ import kotlinx.coroutines.flow.flow
 
 class BinanceStream(
     private val client: HttpClient,
-    private val backoff: ExponentialBackoff = ExponentialBackoff(), //reconnect kline stream
-) {
+    private val backoff: RetryBackoff = RetryBackoff(), //reconnect kline stream
+) : KlineStream {
 
-    fun klines(interval: KlineInterval): Flow<KlineDto> = flow {
+    override fun events(interval: KlineInterval): Flow<KlineStreamEvent> = flow {
         client.webSocket("$BASE_URL/ws/${SYMBOL}@kline_${interval.code}") {
+            // Frames buffer in `incoming` while the collector handles Connected, so a REST gap fill misses nothing.
+            emit(KlineStreamEvent.Connected)
             for (frame in incoming) {
                 if (frame is Frame.Text) {
-                    emit(binanceJson.decodeFromString<KlineEventDto>(frame.readText()).toKlineDto())
+                    val kline = binanceJson.decodeFromString<KlineEventDto>(frame.readText()).toKlineDto()
+                    emit(KlineStreamEvent.Update(kline))
                 }
             }
         }

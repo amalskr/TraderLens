@@ -8,5 +8,6 @@ import kotlinx.coroutines.flow.Flow
 interface MarketRepository {
     suspend fun getCandles(interval: KlineInterval, limit: Int): Result<List<Candle>>
 
-    fun observeCandles(interval: KlineInterval): Flow<Candle>
+    /** Latest [limit] candles, refetched over REST on every (re)connect to fill gaps, then updated live. */
+    fun observeCandles(interval: KlineInterval, limit: Int): Flow<List<Candle>>
 }
