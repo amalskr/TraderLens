@@ -1,0 +1,16 @@
+CREATE TABLE tradeEntity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    side TEXT NOT NULL CHECK (side IN ('BUY', 'SELL')),
+    price_cents INTEGER NOT NULL CHECK (price_cents > 0),
+    usd_cents INTEGER NOT NULL CHECK (usd_cents > 0),
+    btc_sats INTEGER NOT NULL CHECK (btc_sats > 0),
+    timestamp_millis INTEGER NOT NULL
+);
+
+CREATE INDEX trade_timestamp ON tradeEntity(timestamp_millis);
+
+insert:
+INSERT INTO tradeEntity(side, price_cents, usd_cents, btc_sats, timestamp_millis) VALUES (?, ?, ?, ?, ?);
+
+selectAll:
+SELECT * FROM tradeEntity ORDER BY timestamp_millis DESC, id DESC;

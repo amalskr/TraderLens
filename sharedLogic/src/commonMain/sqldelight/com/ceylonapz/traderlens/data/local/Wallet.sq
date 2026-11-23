@@ -1,0 +1,15 @@
+-- Single row; CHECKs are the last line of defence against negative balances.
+CREATE TABLE walletEntity (
+    id INTEGER PRIMARY KEY NOT NULL CHECK (id = 1),
+    usd_cents INTEGER NOT NULL CHECK (usd_cents >= 0),
+    btc_sats INTEGER NOT NULL CHECK (btc_sats >= 0)
+);
+
+select:
+SELECT usd_cents, btc_sats FROM walletEntity WHERE id = 1;
+
+insertIfAbsent:
+INSERT OR IGNORE INTO walletEntity(id, usd_cents, btc_sats) VALUES (1, ?, ?);
+
+update:
+UPDATE walletEntity SET usd_cents = ?, btc_sats = ? WHERE id = 1;

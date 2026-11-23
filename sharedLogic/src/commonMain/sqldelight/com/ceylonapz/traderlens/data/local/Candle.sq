@@ -1,0 +1,22 @@
+-- Keyed by open time so an upsert is the same merge rule as the live stream.
+CREATE TABLE candleEntity (
+    interval TEXT NOT NULL,
+    open_time_millis INTEGER NOT NULL,
+    open_cents INTEGER NOT NULL,
+    high_cents INTEGER NOT NULL,
+    low_cents INTEGER NOT NULL,
+    close_cents INTEGER NOT NULL,
+    PRIMARY KEY (interval, open_time_millis)
+);
+
+upsert:
+INSERT OR REPLACE INTO candleEntity(interval, open_time_millis, open_cents, high_cents, low_cents, close_cents)
+VALUES (?, ?, ?, ?, ?, ?);
+
+selectLatest:
+SELECT * FROM (
+    SELECT * FROM candleEntity WHERE interval = :interval ORDER BY open_time_millis DESC LIMIT :limit
+) AS latest ORDER BY open_time_millis ASC;
+
+deleteOlderThan:
+DELETE FROM candleEntity WHERE interval = ? AND open_time_millis < ?;
