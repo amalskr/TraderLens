@@ -6,6 +6,8 @@ sealed interface TradeResult {
 }
 
 enum class TradeRejection {
-    AMOUNT_TOO_SMALL,
+    INVALID_PRICE,
+    INVALID_AMOUNT,
+    BELOW_MINIMUM,
     INSUFFICIENT_FUNDS,
 }

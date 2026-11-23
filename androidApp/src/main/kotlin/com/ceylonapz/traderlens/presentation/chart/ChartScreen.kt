@@ -106,7 +106,9 @@ private fun TradeResult.label(): String = when (this) {
     }
     is TradeResult.Rejected -> when (reason) {
         TradeRejection.INSUFFICIENT_FUNDS -> "Rejected: insufficient funds"
-        TradeRejection.AMOUNT_TOO_SMALL -> "Rejected: amount too small"
+        TradeRejection.INVALID_PRICE -> "Rejected: invalid price"
+        TradeRejection.INVALID_AMOUNT -> "Rejected: invalid amount"
+        TradeRejection.BELOW_MINIMUM -> "Rejected: below minimum order"
     }
 }
 

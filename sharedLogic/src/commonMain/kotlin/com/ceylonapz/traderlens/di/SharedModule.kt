@@ -27,5 +27,5 @@ fun sharedModule(enableLogging: Boolean) = module {
     factory { InitializeWalletUseCase(get()) }
     single<TradeRepository> { TradeRepositoryImpl(get()) }
     // Single instance so its Mutex guards every caller.
-    single { TradingEngine(get()) { Clock.System.now().toEpochMilliseconds() } }
+    single { TradingEngine(get(), nowMillis = { Clock.System.now().toEpochMilliseconds() }) }
 }

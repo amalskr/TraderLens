@@ -40,7 +40,7 @@ class TradingEngineTest {
 
     private val price = PriceCents(9_000_000)
 
-    private fun engine(repository: TradeRepository) = TradingEngine(repository) { 1_234L }
+    private fun engine(repository: TradeRepository) = TradingEngine(repository, nowMillis = { 1_234L })
 
     @Test
     fun buyConvertsUsdToSatoshisRoundedDown() = runTest {
@@ -65,20 +65,13 @@ class TradingEngineTest {
     }
 
     @Test
-    fun amountThatRoundsToZeroIsRejected() = runTest {
+    fun invalidOrderIsRejectedWithoutTouchingRepository() = runTest {
         val repository = FakeTradeRepository(Wallet(UsdCents(0), Satoshis(1)))
 
         val result = engine(repository).entry(MarketOrder.Sell(Satoshis(1)), price)
 
-        assertEquals(TradeResult.Rejected(TradeRejection.AMOUNT_TOO_SMALL), result)
+        assertEquals(TradeResult.Rejected(TradeRejection.BELOW_MINIMUM), result)
         assertEquals(emptyList(), repository.trades)
-    }
-
-    @Test
-    fun zeroAmountIsRejected() = runTest {
-        val result = engine(FakeTradeRepository(Wallet.INITIAL)).entry(MarketOrder.Buy(UsdCents(0)), price)
-
-        assertEquals(TradeResult.Rejected(TradeRejection.AMOUNT_TOO_SMALL), result)
     }
 
     @Test
