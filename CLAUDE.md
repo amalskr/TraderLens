@@ -59,6 +59,9 @@ Network loss, WebSocket disconnects with exponential backoff and jitter, gap fil
 * No comments on obvious code, getters, simple models or tests
 * Explain a design decision once, in the most relevant place, not everywhere
 * Single-line comments use `//`; multi-line comments use `/** */`
+* Simplest working solution first. Only what the current step needs
+* Small functions with clear names; avoid clever tricks
+* Do not add extra fields, helpers, abstractions or features that were not asked for
 
 ## Commands
 
