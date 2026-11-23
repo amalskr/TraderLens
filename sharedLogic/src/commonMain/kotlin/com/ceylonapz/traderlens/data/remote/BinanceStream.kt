@@ -8,7 +8,10 @@ import io.ktor.websocket.readText
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-class BinanceStream(private val client: HttpClient) {
+class BinanceStream(
+    private val client: HttpClient,
+    private val backoff: ExponentialBackoff = ExponentialBackoff(), //reconnect kline stream
+) {
 
     fun klines(interval: KlineInterval): Flow<KlineDto> = flow {
         client.webSocket("$BASE_URL/ws/${SYMBOL}@kline_${interval.code}") {
@@ -18,7 +21,9 @@ class BinanceStream(private val client: HttpClient) {
                 }
             }
         }
-    }
+        // Binance drops connections (e.g. every 24h); a clean close must reconnect too.
+        error("Kline stream closed")
+    }.retryWithBackoff(backoff)
 
     private companion object {
         const val BASE_URL = "wss://stream.binance.com:9443"
