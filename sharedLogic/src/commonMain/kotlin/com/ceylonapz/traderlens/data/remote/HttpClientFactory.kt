@@ -9,8 +9,11 @@ import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.logging.SIMPLE
+import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+
+internal val binanceJson = Json { ignoreUnknownKeys = true }
 
 fun createHttpClient(enableLogging: Boolean, engine: HttpClientEngine? = null): HttpClient {
     val config: HttpClientConfig<*>.() -> Unit = {
@@ -23,8 +26,10 @@ fun createHttpClient(enableLogging: Boolean, engine: HttpClientEngine? = null): 
         }
 
         install(ContentNegotiation) {
-            json(Json { ignoreUnknownKeys = true })
+            json(binanceJson)
         }
+
+        install(WebSockets)
 
         if (enableLogging) {
             install(Logging) {

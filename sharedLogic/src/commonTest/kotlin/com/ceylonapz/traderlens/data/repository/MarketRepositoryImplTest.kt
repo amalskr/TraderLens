@@ -1,6 +1,7 @@
 package com.ceylonapz.traderlens.data.repository
 
 import com.ceylonapz.traderlens.data.remote.BinanceApi
+import com.ceylonapz.traderlens.data.remote.BinanceStream
 import com.ceylonapz.traderlens.data.remote.createHttpClient
 import com.ceylonapz.traderlens.domain.model.Candle
 import com.ceylonapz.traderlens.domain.model.KlineInterval
@@ -21,8 +22,10 @@ import kotlin.test.assertTrue
 
 class MarketRepositoryImplTest {
 
-    private fun repository(handler: MockRequestHandler): MarketRepositoryImpl =
-        MarketRepositoryImpl(BinanceApi(createHttpClient(enableLogging = false, engine = MockEngine(handler))))
+    private fun repository(handler: MockRequestHandler): MarketRepositoryImpl {
+        val client = createHttpClient(enableLogging = false, engine = MockEngine(handler))
+        return MarketRepositoryImpl(BinanceApi(client), BinanceStream(client))
+    }
 
     private fun json(body: String): MockRequestHandler = {
         respond(body, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
