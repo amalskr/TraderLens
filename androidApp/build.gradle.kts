@@ -11,12 +11,32 @@ kotlin {
     }
 }
 dependencies {
-    implementation(project(":sharedUI"))
+    implementation(project(":sharedLogic"))
 
     implementation(libs.androidx.activity.compose)
 
+    // Compose UI
+    implementation(libs.compose.runtime)
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.ui)
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
+    implementation(libs.androidx.lifecycle.viewmodelCompose)
+    implementation(libs.androidx.lifecycle.runtimeCompose)
+
+    // Navigation
+    implementation(libs.navigation3.runtime)
+    implementation(libs.navigation3.ui)
+    implementation(libs.androidx.lifecycle.viewmodelNavigation3)
+
+    // Images (the Ktor OkHttp engine comes from sharedLogic)
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.ktor3)
+
+    // DI for ViewModels
+    implementation(platform(libs.koin.bom))
+    implementation(libs.koin.composeViewmodel)
 }
 
 android {

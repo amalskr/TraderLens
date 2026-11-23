@@ -4,8 +4,8 @@ Paper trading simulator for the BTC/USD spot market. Live market data comes from
 
 ## Tech stack
 
-* Kotlin Multiplatform: `shared` module targets Android and iOS
-* Android UI: Jetpack Compose with Material 3 (in `composeApp`)
+* Kotlin Multiplatform: `sharedLogic` module targets Android and iOS
+* Android UI: Jetpack Compose with Material 3 (in `androidApp`)
 * Networking: Ktor (REST and WebSockets), kotlinx.serialization
 * Local storage: SQLDelight
 * Concurrency: Coroutines and Flow
@@ -22,7 +22,7 @@ Clean Architecture with SOLID principles. Package root: `com.ceylonapz.traderlen
 * `domain` (model, repository, usecase): pure Kotlin, no Ktor, SQLDelight, Android or platform imports
 * `data` (remote, local, repository): implements domain repository interfaces
 * `di`: Koin modules
-* `presentation` (in composeApp): ViewModels expose a single immutable `UiState` via `StateFlow`; screens are stateless where possible
+* `presentation` (in androidApp): ViewModels expose a single immutable `UiState` via `StateFlow`; screens are stateless where possible
 * Dependencies point inward only: presentation to domain, data to domain. Domain never depends on data
 * One use case per class, one responsibility per class
 
@@ -53,6 +53,6 @@ Network loss, WebSocket disconnects with exponential backoff and jitter, gap fil
 
 ## Commands
 
-* Build Android: `./gradlew :composeApp:assembleDebug`
-* Run shared tests: `./gradlew :shared:allTests`
-* Release APK: `./gradlew :composeApp:assembleRelease` then copy to `dist/`
+* Build Android: `./gradlew :androidApp:assembleDebug`
+* Run shared tests: `./gradlew :sharedLogic:allTests`
+* Release APK: `./gradlew :androidApp:assembleRelease` then copy to `dist/`
