@@ -33,7 +33,7 @@ import com.ceylonapz.traderlens.domain.model.TradeSide
 import com.ceylonapz.traderlens.domain.model.money.Satoshis
 import com.ceylonapz.traderlens.domain.model.money.UsdCents
 import com.ceylonapz.traderlens.domain.model.RetryStatus
-import com.ceylonapz.traderlens.domain.model.Wallet
+import com.ceylonapz.traderlens.domain.model.Portfolio
 import com.ceylonapz.traderlens.presentation.format.formatBtc
 import com.ceylonapz.traderlens.presentation.format.formatUsd
 import kotlinx.coroutines.delay
@@ -53,7 +53,7 @@ fun ChartScreen(modifier: Modifier = Modifier, viewModel: ChartViewModel = koinV
 @Composable
 private fun ChartContent(uiState: ChartUiState, onTrade: (MarketOrder) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
-        uiState.wallet?.let { WalletCard(it) }
+        uiState.portfolio?.let { PortfolioCard(it, uiState.tradeCount) }
         Spacer(Modifier.size(12.dp))
         TestTradeButtons(uiState, onTrade)
         Spacer(Modifier.size(12.dp))
@@ -70,12 +70,15 @@ private fun ChartContent(uiState: ChartUiState, onTrade: (MarketOrder) -> Unit, 
 }
 
 @Composable
-private fun WalletCard(wallet: Wallet) {
+private fun PortfolioCard(portfolio: Portfolio, tradeCount: Int) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Wallet", style = MaterialTheme.typography.titleMedium)
-            StatusRow("USD") { Text(wallet.usd.formatUsd()) }
-            StatusRow("BTC") { Text(wallet.btc.formatBtc()) }
+            Text("Portfolio", style = MaterialTheme.typography.titleMedium)
+            StatusRow("USD") { Text(portfolio.wallet.usd.formatUsd()) }
+            StatusRow("BTC") { Text(portfolio.wallet.btc.formatBtc()) }
+            StatusRow("Price") { Text(portfolio.price?.formatUsd() ?: "Waiting for live price") }
+            StatusRow("Total") { Text(portfolio.totalValue?.formatUsd() ?: "-") }
+            StatusRow("Trades") { Text(tradeCount.toString()) }
         }
     }
 }

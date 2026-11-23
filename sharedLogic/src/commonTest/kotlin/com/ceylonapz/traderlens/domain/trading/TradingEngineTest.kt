@@ -1,5 +1,7 @@
 package com.ceylonapz.traderlens.domain.trading
 
+import com.ceylonapz.traderlens.domain.fakes.FakePriceFeed
+import com.ceylonapz.traderlens.domain.fakes.FakeTradeRepository
 import com.ceylonapz.traderlens.domain.model.ConnectionState
 import com.ceylonapz.traderlens.domain.model.LivePrice
 import com.ceylonapz.traderlens.domain.model.MarketOrder
@@ -11,43 +13,18 @@ import com.ceylonapz.traderlens.domain.model.Wallet
 import com.ceylonapz.traderlens.domain.model.money.PriceCents
 import com.ceylonapz.traderlens.domain.model.money.Satoshis
 import com.ceylonapz.traderlens.domain.model.money.UsdCents
-import com.ceylonapz.traderlens.domain.repository.PriceFeed
 import com.ceylonapz.traderlens.domain.repository.TradeRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TestTimeSource
 
 class TradingEngineTest {
-
-    // Suspends between reading and writing the wallet, so unguarded concurrent trades would double spend.
-    private class FakeTradeRepository(var wallet: Wallet) : TradeRepository {
-        val trades = mutableListOf<Trade>()
-
-        override suspend fun execute(
-            side: TradeSide,
-            price: PriceCents,
-            usd: UsdCents,
-            btc: Satoshis,
-            timestampMillis: Long,
-        ): Trade? {
-            val current = wallet
-            delay(10)
-            wallet = current.afterTrade(side, usd, btc) ?: return null
-            return Trade(trades.size + 1L, side, price, usd, btc, timestampMillis).also { trades += it }
-        }
-    }
-
-    private class FakePriceFeed : PriceFeed {
-        override val connectionState = MutableStateFlow(ConnectionState.Connected)
-        override val latestPrice = MutableStateFlow<LivePrice?>(null)
-    }
 
     private val price = PriceCents(9_000_000)
     private val timeSource = TestTimeSource()
@@ -84,7 +61,7 @@ class TradingEngineTest {
         val result = engine(repository).entry(MarketOrder.Sell(Satoshis(1)))
 
         assertEquals(TradeResult.Rejected(TradeRejection.BELOW_MINIMUM), result)
-        assertEquals(emptyList(), repository.trades)
+        assertEquals(emptyList(), repository.trades.value)
     }
 
     @Test
@@ -117,7 +94,7 @@ class TradingEngineTest {
         val result = engine(repository).entry(MarketOrder.Buy(UsdCents(100_000)))
 
         assertEquals(TradeResult.Rejected(TradeRejection.DISCONNECTED), result)
-        assertEquals(emptyList(), repository.trades)
+        assertEquals(emptyList(), repository.trades.value)
     }
 
     @Test
@@ -128,7 +105,7 @@ class TradingEngineTest {
         val result = engine(repository).entry(MarketOrder.Buy(UsdCents(100_000)))
 
         assertEquals(TradeResult.Rejected(TradeRejection.STALE_PRICE), result)
-        assertEquals(emptyList(), repository.trades)
+        assertEquals(emptyList(), repository.trades.value)
     }
 
     @Test
@@ -153,5 +130,27 @@ class TradingEngineTest {
 
         assertEquals(price, assertIs<TradeResult.Success>(first.await()).trade.price)
         assertEquals(newPrice, assertIs<TradeResult.Success>(second.await()).trade.price)
+    }
+
+    @Test
+    fun sellingMoreBtcThanHeldIsRejected() = runTest {
+        val repository = FakeTradeRepository(Wallet(UsdCents(0), Satoshis(1_000_000)))
+
+        val result = engine(repository).entry(MarketOrder.Sell(Satoshis(1_000_001)))
+
+        assertEquals(TradeResult.Rejected(TradeRejection.INSUFFICIENT_FUNDS), result)
+        assertEquals(Satoshis(1_000_000), repository.wallet.btc)
+    }
+
+    @Test
+    fun failedTradeReleasesLockForNextTrade() = runTest {
+        val repository = FakeTradeRepository(Wallet.INITIAL).apply { failNext = true }
+        val engine = engine(repository)
+
+        assertFailsWith<IllegalStateException> { engine.entry(MarketOrder.Buy(UsdCents(100_000))) }
+        val result = engine.entry(MarketOrder.Buy(UsdCents(100_000)))
+
+        assertIs<TradeResult.Success>(result)
+        assertEquals(UsdCents(900_000), repository.wallet.usd)
     }
 }

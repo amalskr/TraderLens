@@ -6,6 +6,8 @@ import com.ceylonapz.traderlens.domain.model.TradeSide
 import com.ceylonapz.traderlens.domain.model.money.PriceCents
 import com.ceylonapz.traderlens.domain.model.money.Satoshis
 import com.ceylonapz.traderlens.domain.model.money.UsdCents
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import java.sql.SQLException
@@ -64,5 +66,18 @@ class TradeRepositoryImplTest {
         }
         assertEquals(1_000_000L to 0L, walletRow())
         assertTrue(database.tradeQueries.selectAll().executeAsList().isEmpty())
+    }
+
+    @Test
+    fun observeTradesEmitsNewestFirstAfterEachTrade() = runTest {
+        val dispatcher = UnconfinedTestDispatcher(testScheduler)
+        val repository = TradeRepositoryImpl(database, dispatcher)
+        val emissions = mutableListOf<List<Trade>>()
+        backgroundScope.launch(dispatcher) { repository.observeTrades().toList(emissions) }
+
+        val buy = repository.execute(TradeSide.BUY, price, UsdCents(900_000), Satoshis(10_000_000), 1_000)!!
+        val sell = repository.execute(TradeSide.SELL, price, UsdCents(450_000), Satoshis(5_000_000), 2_000)!!
+
+        assertEquals(listOf(emptyList(), listOf(buy), listOf(sell, buy)), emissions)
     }
 }
