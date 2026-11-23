@@ -6,11 +6,15 @@ import com.ceylonapz.traderlens.data.remote.BinanceStream
 import com.ceylonapz.traderlens.data.remote.KlineStream
 import com.ceylonapz.traderlens.data.remote.createHttpClient
 import com.ceylonapz.traderlens.data.repository.MarketRepositoryImpl
+import com.ceylonapz.traderlens.data.repository.TradeRepositoryImpl
 import com.ceylonapz.traderlens.data.repository.WalletRepositoryImpl
 import com.ceylonapz.traderlens.domain.repository.MarketRepository
+import com.ceylonapz.traderlens.domain.repository.TradeRepository
 import com.ceylonapz.traderlens.domain.repository.WalletRepository
+import com.ceylonapz.traderlens.domain.trading.TradingEngine
 import com.ceylonapz.traderlens.domain.usecase.InitializeWalletUseCase
 import org.koin.dsl.module
+import kotlin.time.Clock
 
 fun sharedModule(enableLogging: Boolean) = module {
     includes(platformModule)
@@ -21,4 +25,7 @@ fun sharedModule(enableLogging: Boolean) = module {
     single { TraderLensDatabase(get()) }
     single<WalletRepository> { WalletRepositoryImpl(get()) }
     factory { InitializeWalletUseCase(get()) }
+    single<TradeRepository> { TradeRepositoryImpl(get()) }
+    // Single instance so its Mutex guards every caller.
+    single { TradingEngine(get()) { Clock.System.now().toEpochMilliseconds() } }
 }

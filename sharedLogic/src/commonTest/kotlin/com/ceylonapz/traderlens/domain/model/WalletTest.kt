@@ -5,6 +5,7 @@ import com.ceylonapz.traderlens.domain.model.money.Satoshis
 import com.ceylonapz.traderlens.domain.model.money.UsdCents
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class WalletTest {
 
@@ -24,5 +25,30 @@ class WalletTest {
     fun totalValueAddsBtcValueToUsd() {
         val wallet = Wallet(UsdCents(100_000), Satoshis(50_000_000))
         assertEquals(UsdCents(4_600_000), wallet.totalValue(PriceCents(9_000_000)))
+    }
+
+    @Test
+    fun buyMovesUsdIntoBtc() {
+        val wallet = Wallet(UsdCents(1_000_000), Satoshis(0))
+        assertEquals(
+            Wallet(UsdCents(100_000), Satoshis(1_000_000)),
+            wallet.afterTrade(TradeSide.BUY, UsdCents(900_000), Satoshis(1_000_000)),
+        )
+    }
+
+    @Test
+    fun sellMovesBtcIntoUsd() {
+        val wallet = Wallet(UsdCents(0), Satoshis(1_000_000))
+        assertEquals(
+            Wallet(UsdCents(900_000), Satoshis(0)),
+            wallet.afterTrade(TradeSide.SELL, UsdCents(900_000), Satoshis(1_000_000)),
+        )
+    }
+
+    @Test
+    fun tradeThatWouldGoNegativeReturnsNull() {
+        val wallet = Wallet(UsdCents(100), Satoshis(100))
+        assertNull(wallet.afterTrade(TradeSide.BUY, UsdCents(101), Satoshis(1)))
+        assertNull(wallet.afterTrade(TradeSide.SELL, UsdCents(1), Satoshis(101)))
     }
 }

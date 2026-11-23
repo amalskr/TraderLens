@@ -14,3 +14,6 @@ INSERT INTO tradeEntity(side, price_cents, usd_cents, btc_sats, timestamp_millis
 
 selectAll:
 SELECT * FROM tradeEntity ORDER BY timestamp_millis DESC, id DESC;
+
+lastInsertId:
+SELECT last_insert_rowid();

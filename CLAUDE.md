@@ -19,7 +19,7 @@ Paper trading simulator for the BTC/USD spot market. Live market data comes from
 
 Clean Architecture with SOLID principles. Package root: `com.ceylonapz.traderlens`
 
-* `domain` (model, repository, usecase): pure Kotlin, no Ktor, SQLDelight, Android or platform imports
+* `domain` (model, repository, usecase, trading): pure Kotlin, no Ktor, SQLDelight, Android or platform imports
 * `data` (remote, local, repository): implements domain repository interfaces
 * `di`: Koin modules
 * `presentation` (in androidApp): ViewModels expose a single immutable `UiState` via `StateFlow`; screens are stateless where possible
