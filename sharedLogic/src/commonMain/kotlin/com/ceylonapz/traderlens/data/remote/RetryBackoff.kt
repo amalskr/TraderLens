@@ -2,6 +2,7 @@ package com.ceylonapz.traderlens.data.remote
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.onEach
@@ -27,13 +28,18 @@ class RetryBackoff(
 }
 
 // Retries forever; the attempt count resets once a value arrives, so a healthy reconnect starts fast again.
-fun <T> Flow<T>.retryWithBackoff(backoff: RetryBackoff): Flow<T> = flow {
+fun <T> Flow<T>.retryWithBackoff(
+    backoff: RetryBackoff,
+    onRetry: suspend FlowCollector<T>.(failures: Int, delayMillis: Long) -> Unit = { _, _ -> },
+): Flow<T> = flow {
     var attempt = 0
     emitAll(
         this@retryWithBackoff
             .onEach { attempt = 0 }
             .retryWhen { _, _ ->
-                delay(backoff.delayMillis(attempt++).milliseconds)
+                val delayMillis = backoff.delayMillis(attempt++)
+                onRetry(attempt, delayMillis)
+                delay(delayMillis.milliseconds)
                 true
             }
     )

@@ -1,9 +1,20 @@
 package com.ceylonapz.traderlens.presentation.chart
 
 import com.ceylonapz.traderlens.domain.model.Candle
+import com.ceylonapz.traderlens.domain.model.ConnectionState
+import com.ceylonapz.traderlens.domain.model.RetryStatus
 
-sealed interface ChartUiState {
-    data object Loading : ChartUiState
-    data class Success(val candles: List<Candle>) : ChartUiState
-    data object Error : ChartUiState
+data class ChartUiState(
+    val candles: List<Candle> = emptyList(),
+    val connection: ConnectionState = ConnectionState.Offline,
+    val retry: RetryStatus? = null,
+    val lastUpdatedOpenTime: Long? = null,
+    val lastAppendedOpenTime: Long? = null,
+    val reconnects: Int = 0,
+    val lastGapFill: GapFillStatus? = null,
+)
+
+sealed interface GapFillStatus {
+    data class Filled(val added: Int) : GapFillStatus
+    data object Failed : GapFillStatus
 }

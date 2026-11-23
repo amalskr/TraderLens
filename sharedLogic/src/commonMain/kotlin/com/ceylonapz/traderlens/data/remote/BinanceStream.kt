@@ -26,7 +26,9 @@ class BinanceStream(
         }
         // Binance drops connections (e.g. every 24h); a clean close must reconnect too.
         error("Kline stream closed")
-    }.retryWithBackoff(backoff)
+    }.retryWithBackoff(backoff) { failures, delayMillis ->
+        emit(KlineStreamEvent.Disconnected(failures, delayMillis))
+    }
 
     private companion object {
         const val BASE_URL = "wss://stream.binance.com:9443"

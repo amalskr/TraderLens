@@ -6,6 +6,9 @@ import com.ceylonapz.traderlens.data.remote.KlineStream
 import com.ceylonapz.traderlens.data.remote.KlineStreamEvent
 import com.ceylonapz.traderlens.data.remote.createHttpClient
 import com.ceylonapz.traderlens.domain.model.Candle
+import com.ceylonapz.traderlens.domain.model.CandleFeedEvent
+import com.ceylonapz.traderlens.domain.model.ConnectionState
+import com.ceylonapz.traderlens.domain.model.RetryStatus
 import com.ceylonapz.traderlens.domain.model.KlineInterval
 import com.ceylonapz.traderlens.domain.model.money.PriceCents
 import io.ktor.client.engine.mock.MockEngine
@@ -16,6 +19,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
@@ -104,7 +108,15 @@ class MarketRepositoryImplTest {
                 listOf(candle(1, 100), candle(2, 300)),
                 listOf(candle(1, 100), candle(2, 300), candle(3, 400)),
             ),
-            emissions,
+            emissions.map { it.candles },
+        )
+        assertEquals(
+            listOf(
+                CandleFeedEvent.GapFill(added = 2),
+                CandleFeedEvent.Live(candle(2, 300)),
+                CandleFeedEvent.Live(candle(3, 400)),
+            ),
+            emissions.map { it.event },
         )
     }
 
@@ -125,7 +137,8 @@ class MarketRepositoryImplTest {
 
         val last = repo.observeCandles(KlineInterval.ONE_MINUTE, limit = 10).toList().last()
 
-        assertEquals(listOf(candle(1, 100), candle(2, 200), candle(3, 300)), last)
+        assertEquals(listOf(candle(1, 100), candle(2, 200), candle(3, 300)), last.candles)
+        assertEquals(CandleFeedEvent.GapFill(added = 2), last.event)
     }
 
     @Test
@@ -138,7 +151,8 @@ class MarketRepositoryImplTest {
 
         val emissions = repo.observeCandles(KlineInterval.ONE_MINUTE, limit = 10).toList()
 
-        assertEquals(listOf(emptyList(), listOf(candle(1, 100))), emissions)
+        assertEquals(listOf(emptyList(), listOf(candle(1, 100))), emissions.map { it.candles })
+        assertEquals(CandleFeedEvent.GapFillFailed, emissions.first().event)
     }
 
     @Test
@@ -151,6 +165,52 @@ class MarketRepositoryImplTest {
 
         val last = repo.observeCandles(KlineInterval.ONE_MINUTE, limit = 2).toList().last()
 
-        assertEquals(listOf(candle(2, 200), candle(3, 300)), last)
+        assertEquals(listOf(candle(2, 200), candle(3, 300)), last.candles)
+    }
+
+    @Test
+    fun connectionStateFollowsStreamEvents() = runTest {
+        val states = mutableListOf<ConnectionState>()
+        val retries = mutableListOf<RetryStatus?>()
+        lateinit var repo: MarketRepositoryImpl
+        val stream = object : KlineStream {
+            override fun events(interval: KlineInterval): Flow<KlineStreamEvent> = flow {
+                states += repo.connectionState.value
+                listOf(
+                    KlineStreamEvent.Connected,
+                    KlineStreamEvent.Disconnected(failures = 1, retryInMillis = 700),
+                    KlineStreamEvent.Disconnected(failures = 2, retryInMillis = 1_500),
+                    KlineStreamEvent.Disconnected(failures = 3, retryInMillis = 3_000),
+                    KlineStreamEvent.Connected,
+                ).forEach {
+                    emit(it)
+                    states += repo.connectionState.value
+                    retries += repo.retryStatus.value
+                }
+            }
+        }
+        val client = createHttpClient(enableLogging = false, engine = MockEngine(json("[]")))
+        repo = MarketRepositoryImpl(BinanceApi(client), stream)
+
+        assertEquals(ConnectionState.Offline, repo.connectionState.value)
+        repo.observeCandles(KlineInterval.ONE_MINUTE, limit = 10).toList()
+
+        assertEquals(
+            listOf(
+                ConnectionState.Reconnecting,
+                ConnectionState.Connected,
+                ConnectionState.Reconnecting,
+                ConnectionState.Reconnecting,
+                ConnectionState.Offline,
+                ConnectionState.Connected,
+            ),
+            states,
+        )
+        assertEquals(
+            listOf(null, RetryStatus(1, 700), RetryStatus(2, 1_500), RetryStatus(3, 3_000), null),
+            retries,
+        )
+        assertEquals(ConnectionState.Offline, repo.connectionState.value)
+        assertEquals(null, repo.retryStatus.value)
     }
 }

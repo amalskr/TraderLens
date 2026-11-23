@@ -16,4 +16,5 @@ interface KlineStream {
 sealed interface KlineStreamEvent {
     data object Connected : KlineStreamEvent
     data class Update(val kline: KlineDto) : KlineStreamEvent
+    data class Disconnected(val failures: Int, val retryInMillis: Long) : KlineStreamEvent
 }

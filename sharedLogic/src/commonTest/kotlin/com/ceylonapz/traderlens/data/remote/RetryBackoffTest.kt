@@ -68,4 +68,20 @@ class RetryBackoffTest {
         assertEquals(listOf(1, 2, 3), values)
         assertEquals(500L + 500L, currentTime)
     }
+
+    @Test
+    fun onRetryReceivesFailureCountAndDelay() = runTest {
+        var calls = 0
+        val source = flow {
+            calls++
+            if (calls == 3) emit("up")
+            if (calls < 5) error("down")
+        }
+
+        val values = source.retryWithBackoff(RetryBackoff(random = noJitter)) { failures, delayMillis ->
+            emit("retry $failures in $delayMillis")
+        }.toList()
+
+        assertEquals(listOf("retry 1 in 500", "retry 2 in 1000", "up", "retry 1 in 500", "retry 2 in 1000"), values)
+    }
 }
