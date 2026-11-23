@@ -4,9 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ceylonapz.traderlens.domain.model.CandleFeed
 import com.ceylonapz.traderlens.domain.model.CandleFeedEvent
+import com.ceylonapz.traderlens.domain.model.ConnectionState
 import com.ceylonapz.traderlens.domain.model.KlineInterval
+import com.ceylonapz.traderlens.domain.model.MarketOrder
 import com.ceylonapz.traderlens.domain.repository.MarketRepository
 import com.ceylonapz.traderlens.domain.repository.WalletRepository
+import com.ceylonapz.traderlens.domain.trading.TradingEngine
 import com.ceylonapz.traderlens.domain.usecase.InitializeWalletUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,6 +20,7 @@ class ChartViewModel(
     private val marketRepository: MarketRepository,
     private val walletRepository: WalletRepository,
     private val initializeWallet: InitializeWalletUseCase,
+    private val tradingEngine: TradingEngine,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChartUiState())
@@ -43,6 +47,17 @@ class ChartViewModel(
             marketRepository.observeCandles(KlineInterval.ONE_MINUTE, CANDLE_LIMIT).collect { feed ->
                 _uiState.update { it.apply(feed) }
             }
+        }
+    }
+
+    // Temporary until the trade panel: close of the live candle is the latest WebSocket price.
+    fun trade(order: MarketOrder) {
+        val state = _uiState.value
+        val price = state.candles.lastOrNull()?.close ?: return
+        if (state.connection != ConnectionState.Connected) return
+        viewModelScope.launch {
+            val result = tradingEngine.entry(order, price)
+            _uiState.update { it.copy(lastTrade = result) }
         }
     }
 

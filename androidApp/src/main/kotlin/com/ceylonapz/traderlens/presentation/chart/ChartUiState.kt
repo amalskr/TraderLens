@@ -3,10 +3,12 @@ package com.ceylonapz.traderlens.presentation.chart
 import com.ceylonapz.traderlens.domain.model.Candle
 import com.ceylonapz.traderlens.domain.model.ConnectionState
 import com.ceylonapz.traderlens.domain.model.RetryStatus
+import com.ceylonapz.traderlens.domain.model.TradeResult
 import com.ceylonapz.traderlens.domain.model.Wallet
 
 data class ChartUiState(
     val wallet: Wallet? = null,
+    val lastTrade: TradeResult? = null,
     val candles: List<Candle> = emptyList(),
     val connection: ConnectionState = ConnectionState.Offline,
     val retry: RetryStatus? = null,

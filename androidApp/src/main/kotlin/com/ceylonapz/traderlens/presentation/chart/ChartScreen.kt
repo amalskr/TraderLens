@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +26,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ceylonapz.traderlens.domain.model.ConnectionState
+import com.ceylonapz.traderlens.domain.model.MarketOrder
+import com.ceylonapz.traderlens.domain.model.TradeRejection
+import com.ceylonapz.traderlens.domain.model.TradeResult
+import com.ceylonapz.traderlens.domain.model.TradeSide
+import com.ceylonapz.traderlens.domain.model.money.Satoshis
+import com.ceylonapz.traderlens.domain.model.money.UsdCents
 import com.ceylonapz.traderlens.domain.model.RetryStatus
 import com.ceylonapz.traderlens.domain.model.Wallet
 import com.ceylonapz.traderlens.presentation.format.formatBtc
@@ -40,13 +47,15 @@ private val TimeFormat = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.sy
 @Composable
 fun ChartScreen(modifier: Modifier = Modifier, viewModel: ChartViewModel = koinViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    ChartContent(uiState, modifier)
+    ChartContent(uiState, onTrade = viewModel::trade, modifier = modifier)
 }
 
 @Composable
-private fun ChartContent(uiState: ChartUiState, modifier: Modifier = Modifier) {
+private fun ChartContent(uiState: ChartUiState, onTrade: (MarketOrder) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         uiState.wallet?.let { WalletCard(it) }
+        Spacer(Modifier.size(12.dp))
+        TestTradeButtons(uiState, onTrade)
         Spacer(Modifier.size(12.dp))
         StreamStatus(uiState)
         Spacer(Modifier.size(16.dp))
@@ -68,6 +77,36 @@ private fun WalletCard(wallet: Wallet) {
             StatusRow("USD") { Text(wallet.usd.formatUsd()) }
             StatusRow("BTC") { Text(wallet.btc.formatBtc()) }
         }
+    }
+}
+
+@Composable
+private fun TestTradeButtons(uiState: ChartUiState, onTrade: (MarketOrder) -> Unit) {
+    val enabled = uiState.connection == ConnectionState.Connected && uiState.candles.isNotEmpty()
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(onClick = { onTrade(MarketOrder.Buy(TEST_BUY_USD)) }, enabled = enabled) {
+                Text("Buy ${TEST_BUY_USD.formatUsd()}")
+            }
+            Button(onClick = { onTrade(MarketOrder.Sell(TEST_SELL_BTC)) }, enabled = enabled) {
+                Text("Sell ${TEST_SELL_BTC.formatBtc()}")
+            }
+        }
+        uiState.lastTrade?.let { Text(it.label(), style = MaterialTheme.typography.bodyMedium) }
+    }
+}
+
+private val TEST_BUY_USD = UsdCents(100_000)
+private val TEST_SELL_BTC = Satoshis(1_000_000)
+
+private fun TradeResult.label(): String = when (this) {
+    is TradeResult.Success -> {
+        val verb = if (trade.side == TradeSide.BUY) "Bought" else "Sold"
+        "#${trade.id} $verb ${trade.btc.formatBtc()} for ${trade.usd.formatUsd()} at ${trade.price.formatUsd()}"
+    }
+    is TradeResult.Rejected -> when (reason) {
+        TradeRejection.INSUFFICIENT_FUNDS -> "Rejected: insufficient funds"
+        TradeRejection.AMOUNT_TOO_SMALL -> "Rejected: amount too small"
     }
 }
 
