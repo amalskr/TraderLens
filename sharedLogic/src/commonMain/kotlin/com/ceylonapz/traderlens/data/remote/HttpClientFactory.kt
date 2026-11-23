@@ -1,6 +1,8 @@
 package com.ceylonapz.traderlens.data.remote
 
 import io.ktor.client.HttpClient
+import io.ktor.client.HttpClientConfig
+import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
@@ -10,24 +12,26 @@ import io.ktor.client.plugins.logging.SIMPLE
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 
-fun createHttpClient(enableLogging: Boolean): HttpClient = HttpClient {
+fun createHttpClient(enableLogging: Boolean, engine: HttpClientEngine? = null): HttpClient {
+    val config: HttpClientConfig<*>.() -> Unit = {
+        expectSuccess = true
 
-    expectSuccess = true
+        install(HttpTimeout) {
+            connectTimeoutMillis = 10_000
+            requestTimeoutMillis = 15_000
+            socketTimeoutMillis = 15_000
+        }
 
-    install(HttpTimeout) {
-        connectTimeoutMillis = 10_000
-        requestTimeoutMillis = 15_000
-        socketTimeoutMillis = 15_000
-    }
+        install(ContentNegotiation) {
+            json(Json { ignoreUnknownKeys = true })
+        }
 
-    install(ContentNegotiation) {
-        json(Json { ignoreUnknownKeys = true })
-    }
-
-    if (enableLogging) {
-        install(Logging) {
-            logger = Logger.SIMPLE
-            level = LogLevel.INFO
+        if (enableLogging) {
+            install(Logging) {
+                logger = Logger.SIMPLE
+                level = LogLevel.INFO
+            }
         }
     }
+    return if (engine == null) HttpClient(config) else HttpClient(engine, config)
 }
