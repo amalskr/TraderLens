@@ -26,6 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ceylonapz.traderlens.domain.model.ConnectionState
 import com.ceylonapz.traderlens.domain.model.RetryStatus
+import com.ceylonapz.traderlens.domain.model.Wallet
+import com.ceylonapz.traderlens.presentation.format.formatBtc
+import com.ceylonapz.traderlens.presentation.format.formatUsd
 import kotlinx.coroutines.delay
 import org.koin.compose.viewmodel.koinViewModel
 import java.time.Instant
@@ -43,6 +46,8 @@ fun ChartScreen(modifier: Modifier = Modifier, viewModel: ChartViewModel = koinV
 @Composable
 private fun ChartContent(uiState: ChartUiState, modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
+        uiState.wallet?.let { WalletCard(it) }
+        Spacer(Modifier.size(12.dp))
         StreamStatus(uiState)
         Spacer(Modifier.size(16.dp))
         Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
@@ -51,6 +56,17 @@ private fun ChartContent(uiState: ChartUiState, modifier: Modifier = Modifier) {
                 uiState.connection == ConnectionState.Offline -> Text("Couldn't load the chart")
                 else -> CircularProgressIndicator()
             }
+        }
+    }
+}
+
+@Composable
+private fun WalletCard(wallet: Wallet) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Wallet", style = MaterialTheme.typography.titleMedium)
+            StatusRow("USD") { Text(wallet.usd.formatUsd()) }
+            StatusRow("BTC") { Text(wallet.btc.formatBtc()) }
         }
     }
 }

@@ -6,17 +6,29 @@ import com.ceylonapz.traderlens.domain.model.CandleFeed
 import com.ceylonapz.traderlens.domain.model.CandleFeedEvent
 import com.ceylonapz.traderlens.domain.model.KlineInterval
 import com.ceylonapz.traderlens.domain.repository.MarketRepository
+import com.ceylonapz.traderlens.domain.repository.WalletRepository
+import com.ceylonapz.traderlens.domain.usecase.InitializeWalletUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class ChartViewModel(private val marketRepository: MarketRepository) : ViewModel() {
+class ChartViewModel(
+    private val marketRepository: MarketRepository,
+    private val walletRepository: WalletRepository,
+    private val initializeWallet: InitializeWalletUseCase,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChartUiState())
     val uiState = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            initializeWallet()
+            walletRepository.observeWallet().collect { wallet ->
+                _uiState.update { it.copy(wallet = wallet) }
+            }
+        }
         viewModelScope.launch {
             marketRepository.connectionState.collect { connection ->
                 _uiState.update { it.copy(connection = connection) }
