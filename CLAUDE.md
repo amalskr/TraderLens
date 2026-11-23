@@ -47,9 +47,18 @@ Network loss, WebSocket disconnects with exponential backoff and jitter, gap fil
 * After each step, stop, summarize what changed and why, and wait for my review
 * Do not run `git commit` or `git push`. I review and commit myself. Suggest a Conventional Commits message (feat, fix, chore, test, refactor, docs)
 * Do not add a dependency without asking first
-* Explain non obvious decisions in short code comments
 * Write unit tests for domain logic and the trading engine
 * Never use em dashes or en dashes in README or documentation text
+
+## Code style
+
+* Keep code and comments short. Write code like a senior engineer, not a tutorial
+* Comments explain why, never what. Do not restate what the code does
+* KDoc only for public functions whose behavior is not obvious from the
+  name and signature, and keep it to one line
+* No comments on obvious code, getters, simple models or tests
+* Explain a design decision once, in the most relevant place, not everywhere
+* Single-line comments use `//`; multi-line comments use `/** */`
 
 ## Commands
 
