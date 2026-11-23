@@ -2,17 +2,13 @@ package com.ceylonapz.traderlens.domain.repository
 
 import com.ceylonapz.traderlens.domain.model.Candle
 import com.ceylonapz.traderlens.domain.model.CandleFeed
-import com.ceylonapz.traderlens.domain.model.ConnectionState
 import com.ceylonapz.traderlens.domain.model.KlineInterval
 import com.ceylonapz.traderlens.domain.model.RetryStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 //for binance websocket
-interface MarketRepository {
-    /** Offline unless [observeCandles] is being collected. */
-    val connectionState: StateFlow<ConnectionState>
-
+interface MarketRepository : PriceFeed {
     /** The pending reconnect attempt, or null while connected or idle. */
     val retryStatus: StateFlow<RetryStatus?>
 

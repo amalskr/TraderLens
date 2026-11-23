@@ -27,19 +27,24 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TestTimeSource
+import kotlin.time.TimeSource
 
 class MarketRepositoryImplTest {
 
     private fun repository(
         vararg events: KlineStreamEvent,
         handler: MockRequestHandler,
+        timeSource: TimeSource = TimeSource.Monotonic,
     ): MarketRepositoryImpl {
         val client = createHttpClient(enableLogging = false, engine = MockEngine(handler))
         val stream = object : KlineStream {
             override fun events(interval: KlineInterval): Flow<KlineStreamEvent> = flowOf(*events)
         }
-        return MarketRepositoryImpl(BinanceApi(client), stream)
+        return MarketRepositoryImpl(BinanceApi(client), stream, timeSource)
     }
 
     private fun restKline(openTime: Long, close: String) = """[$openTime,"1","1","1","$close"]"""
@@ -212,5 +217,48 @@ class MarketRepositoryImplTest {
         )
         assertEquals(ConnectionState.Offline, repo.connectionState.value)
         assertEquals(null, repo.retryStatus.value)
+    }
+
+    @Test
+    fun restGapFillDoesNotSetLivePrice() = runTest {
+        val repo = repository(KlineStreamEvent.Connected, handler = json("[${restKline(1, "1.00")}]"))
+
+        repo.observeCandles(KlineInterval.ONE_MINUTE, limit = 10).toList()
+
+        assertNull(repo.latestPrice.value)
+    }
+
+    @Test
+    fun liveUpdateSetsLatestPriceWithReceiveTime() = runTest {
+        val timeSource = TestTimeSource()
+        val repo = repository(
+            KlineStreamEvent.Connected,
+            update(1, "1.00"),
+            update(1, "1.50"),
+            handler = json("[]"),
+            timeSource = timeSource,
+        )
+
+        repo.observeCandles(KlineInterval.ONE_MINUTE, limit = 10).toList()
+        timeSource += 3.seconds
+
+        val latest = repo.latestPrice.value
+        assertEquals(PriceCents(150), latest?.price)
+        assertEquals(3.seconds, latest?.receivedAt?.elapsedNow())
+    }
+
+    @Test
+    fun reconnectClearsPriceFromPreviousConnection() = runTest {
+        val repo = repository(
+            KlineStreamEvent.Connected,
+            update(1, "1.00"),
+            KlineStreamEvent.Disconnected(failures = 1, retryInMillis = 500),
+            KlineStreamEvent.Connected,
+            handler = json("[]"),
+        )
+
+        repo.observeCandles(KlineInterval.ONE_MINUTE, limit = 10).toList()
+
+        assertNull(repo.latestPrice.value)
     }
 }

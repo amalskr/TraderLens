@@ -82,13 +82,12 @@ private fun WalletCard(wallet: Wallet) {
 
 @Composable
 private fun TestTradeButtons(uiState: ChartUiState, onTrade: (MarketOrder) -> Unit) {
-    val enabled = uiState.connection == ConnectionState.Connected && uiState.candles.isNotEmpty()
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = { onTrade(MarketOrder.Buy(TEST_BUY_USD)) }, enabled = enabled) {
+            Button(onClick = { onTrade(MarketOrder.Buy(TEST_BUY_USD)) }) {
                 Text("Buy ${TEST_BUY_USD.formatUsd()}")
             }
-            Button(onClick = { onTrade(MarketOrder.Sell(TEST_SELL_BTC)) }, enabled = enabled) {
+            Button(onClick = { onTrade(MarketOrder.Sell(TEST_SELL_BTC)) }) {
                 Text("Sell ${TEST_SELL_BTC.formatBtc()}")
             }
         }
@@ -106,6 +105,8 @@ private fun TradeResult.label(): String = when (this) {
     }
     is TradeResult.Rejected -> when (reason) {
         TradeRejection.INSUFFICIENT_FUNDS -> "Rejected: insufficient funds"
+        TradeRejection.DISCONNECTED -> "Rejected: not connected"
+        TradeRejection.STALE_PRICE -> "Rejected: price is stale"
         TradeRejection.INVALID_PRICE -> "Rejected: invalid price"
         TradeRejection.INVALID_AMOUNT -> "Rejected: invalid amount"
         TradeRejection.BELOW_MINIMUM -> "Rejected: below minimum order"
