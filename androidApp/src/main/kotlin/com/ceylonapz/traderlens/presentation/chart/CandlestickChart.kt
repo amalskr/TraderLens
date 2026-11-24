@@ -37,9 +37,9 @@ fun CandlestickChart(candles: List<Candle>, modifier: Modifier = Modifier) {
         if (last == null) return@Canvas
 
         val price = lastPrice.price
-        val label = textMeasurer.measure(price.formatUsd(), LabelStyle)
+        val priceLabelTxt = textMeasurer.measure(price.formatUsd(), LabelStyle)
         val labelPadding = 4.dp.toPx()
-        val plotWidth = size.width - label.size.width - labelPadding * 2
+        val plotWidth = size.width - priceLabelTxt.size.width - labelPadding * 2
 
         val maxPrice = candles.maxOf { it.high.value }
         val minPrice = candles.minOf { it.low.value }
@@ -62,7 +62,7 @@ fun CandlestickChart(candles: List<Candle>, modifier: Modifier = Modifier) {
             strokeWidth = 1.dp.toPx(),
             pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx())),
         )
-        drawPriceLabel(label, lineColor, lastPrice.flashAlpha, x = plotWidth, centerY = priceY)
+        drawPriceLabel(priceLabelTxt, lineColor, lastPrice.flashAlpha, x = plotWidth, centerY = priceY)
     }
 }
 
