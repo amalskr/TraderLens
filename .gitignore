@@ -20,3 +20,8 @@ node_modules/
 
 # Personal task list (local only)
 /todo.md
+
+# Release signing credentials (local only)
+/keystore.properties
+*.jks
+*.keystore

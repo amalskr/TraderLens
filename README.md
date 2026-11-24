@@ -45,7 +45,20 @@ Requirements:
 | Install on a running emulator or device | `./gradlew :androidApp:installDebug` |
 | Run all shared tests (Android host and iOS simulator) | `./gradlew :sharedLogic:allTests` |
 | Android lint | `./gradlew :androidApp:lintDebug` |
-| Release APK | `./gradlew :androidApp:assembleRelease`, then copy the APK to `dist/` |
+| Release APK | `./gradlew :androidApp:assembleRelease`, then copy `androidApp/build/outputs/apk/release/androidApp-release.apk` to `dist/` |
+
+A signed release APK is included at [`dist/TraderLens-1.0.apk`](dist/TraderLens-1.0.apk). Install it with `adb install dist/TraderLens-1.0.apk` (uninstall a debug build first, since the signatures differ).
+
+To sign your own release build, create `keystore.properties` at the repo root (it is gitignored):
+
+```properties
+storeFile=/path/to/release.jks
+storePassword=...
+keyAlias=...
+keyPassword=...
+```
+
+Without this file the release build is produced unsigned.
 
 Minimum Android version: 8.0 (API 26). The app needs internet access for live data, but launches and shows cached data without it.
 
@@ -177,7 +190,7 @@ Package root: `com.ceylonapz.traderlens`
 | Built with Kotlin Multiplatform, native Android UI | ✅ | `sharedLogic` (Android and iOS targets), `androidApp` (Jetpack Compose) |
 | Edge cases handled (network loss, errors, volatility) | ⚠️ | Network loss, reconnect and stale price are handled. Missing: dedicated error screens with a manual retry button (errors recover by automatic retry only) |
 | README with build and run instructions | ✅ | `README.md` |
-| Release APK in dist/ at the repo root | ⬜ | No `dist/` folder; release signing not configured |
+| Release APK in dist/ at the repo root | ✅ | `dist/TraderLens-1.0.apk` (signed, minify off) |
 
 ### Beyond the brief
 
@@ -228,4 +241,4 @@ This project was built with [Claude Code](https://claude.com/claude-code) as a p
 * **Landscape phone with the keyboard open** leaves little room; the trade sheet scrolls to reach Review.
 * **Widget:** Android limits periodic widget updates to every 30 minutes. The REST refresh while the app is closed is covered by unit tests but was not observed on a device.
 * **No ViewModel or UI tests:** the app module has no unit test setup yet, so screens were verified manually on an emulator.
-* **Release signing** is not configured yet.
+* **Release build is not minified:** R8 is off to avoid untested keep rules for Ktor, serialization, Koin and SQLDelight, so the APK is about 14 MB.
