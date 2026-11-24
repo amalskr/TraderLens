@@ -53,8 +53,9 @@ android {
         applicationId = "com.ceylonapz.traderlens"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        // CI passes -PversionCode and -PversionName so every release build gets a new version.
+        versionCode = providers.gradleProperty("versionCode").orNull?.toInt() ?: 1
+        versionName = providers.gradleProperty("versionName").orNull ?: "1.0"
     }
     packaging {
         resources {

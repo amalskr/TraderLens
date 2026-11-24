@@ -60,6 +60,16 @@ keyPassword=...
 
 Without this file the release build is produced unsigned.
 
+### CI and releases
+
+[`.github/workflows/release.yml`](.github/workflows/release.yml) runs on every push to `main` (and can be started by hand from the Actions tab):
+
+1. Runs the shared unit tests on the Android host (`:sharedLogic:testAndroidHostTest`)
+2. Restores the release keystore from GitHub Actions secrets and builds a signed APK, versioned `1.0.<build number>`
+3. Tags the commit `v1.0.<build number>` and publishes a GitHub Release with the APK attached
+
+The latest build is always on the repository's Releases page. `dist/` holds the copy delivered with the brief and is updated by hand.
+
 Minimum Android version: 8.0 (API 26). The app needs internet access for live data, but launches and shows cached data without it.
 
 ## Architecture
@@ -211,6 +221,7 @@ Package root: `com.ceylonapz.traderlens`
 | Total P&L against the starting balance | ✅ | `Portfolio.profitLoss`, portfolio card and widget |
 | Shared logic verified on iOS (tests and live data on the simulator) | ⚠️ | All 131 common tests pass on the iOS simulator. Missing: no iOS UI, so live data was not shown on the simulator |
 | Unit tests | ✅ | 154 tests in `sharedLogic/src/commonTest` and `androidHostTest`, 0 failures |
+| CI on GitHub Actions, planned CD to Firebase and Play with Slack | ⚠️ | `.github/workflows/release.yml` tests, signs, tags and publishes a GitHub Release on every main push. Missing: Firebase App Distribution, Play upload and Slack notifications |
 
 ### Bonus
 
