@@ -56,7 +56,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private val PORTRAIT_CHART_HEIGHT = 320.dp
-private val FAB_CLEARANCE = 72.dp
+private val FAB_SIZE = 56.dp
+private val FAB_MARGIN = 16.dp
 
 private val TimeFormat = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
 
@@ -100,22 +101,27 @@ private fun ChartContent(
         if (wide) { // for fordable screens
             Row(Modifier.fillMaxSize().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Chart(uiState, onIntervalChange, Modifier.weight(1f).fillMaxHeight())
-                Column(Modifier.width(400.dp).fillMaxHeight().verticalScroll(rememberScrollState())) {
+                // The row already pads the bottom by FAB_MARGIN, so the column stops right at the button's top edge.
+                Column(Modifier.width(400.dp).fillMaxHeight().padding(bottom = FAB_SIZE).verticalScroll(rememberScrollState())) {
                     TradeSection(uiState)
-                    Spacer(Modifier.size(FAB_CLEARANCE))
                 }
             }
         } else {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(bottom = FAB_SIZE + FAB_MARGIN)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+            ) {
                 TradeSection(uiState)
                 Spacer(Modifier.size(16.dp))
                 Chart(uiState, onIntervalChange, Modifier.fillMaxWidth().height(PORTRAIT_CHART_HEIGHT))
-                Spacer(Modifier.size(FAB_CLEARANCE))
             }
         }
         FloatingActionButton(
             onClick = onOpenTradeSheet,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(FAB_MARGIN),
         ) {
             Icon(painterResource(R.drawable.ic_trade), contentDescription = "Trade")
         }

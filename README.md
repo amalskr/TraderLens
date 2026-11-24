@@ -237,8 +237,6 @@ This project was built with [Claude Code](https://claude.com/claude-code) as a p
 * **"Last updated" time** is shared by both intervals; it shows when any price was last saved.
 * **Trade history** does not show a realized profit or loss per trade.
 * **Diagnostics card:** the Trade screen still shows connection, retry and gap fill details. It is kept on purpose so reviewers can watch reconnects live.
-* **Floating trade button** can cover the chart's price label when the screen is scrolled to the top.
 * **Landscape phone with the keyboard open** leaves little room; the trade sheet scrolls to reach Review.
 * **Widget:** Android limits periodic widget updates to every 30 minutes. The REST refresh while the app is closed is covered by unit tests but was not observed on a device.
-* **No ViewModel or UI tests:** the app module has no unit test setup yet, so screens were verified manually on an emulator.
 * **Release build is not minified:** R8 is off to avoid untested keep rules for Ktor, serialization, Koin and SQLDelight, so the APK is about 14 MB.
