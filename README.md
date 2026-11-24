@@ -45,9 +45,9 @@ Requirements:
 | Install on a running emulator or device | `./gradlew :androidApp:installDebug` |
 | Run all shared tests (Android host and iOS simulator) | `./gradlew :sharedLogic:allTests` |
 | Android lint | `./gradlew :androidApp:lintDebug` |
-| Release APK | `./gradlew :androidApp:assembleRelease`, then copy `androidApp/build/outputs/apk/release/androidApp-release.apk` to `dist/` |
+| Release APK (local) | `./gradlew :androidApp:assembleRelease` (output in `androidApp/build/outputs/apk/release/`) |
 
-A signed release APK is included at [`dist/TraderLens-1.0.apk`](dist/TraderLens-1.0.apk). Install it with `adb install dist/TraderLens-1.0.apk` (uninstall a debug build first, since the signatures differ).
+The signed APK of the latest release is included at [`dist/TraderLens-1.0.1.apk`](dist/TraderLens-1.0.1.apk) and attached to the matching [GitHub Release](https://github.com/amalskr/TraderLens/releases). Install it with `adb install dist/TraderLens-1.0.1.apk` (uninstall a debug build first, since the signatures differ).
 
 To sign your own release build, create `keystore.properties` at the repo root (it is gitignored):
 
@@ -62,13 +62,13 @@ Without this file the release build is produced unsigned.
 
 ### CI and releases
 
-[`.github/workflows/release.yml`](.github/workflows/release.yml) runs on every push to `main` (and can be started by hand from the Actions tab):
+Every push to `main` runs [`.github/workflows/release.yml`](.github/workflows/release.yml):
 
 1. Runs the shared unit tests on the Android host (`:sharedLogic:testAndroidHostTest`)
-2. Restores the release keystore from GitHub Actions secrets and builds a signed APK, versioned `1.0.<build number>`
-3. Tags the commit `v1.0.<build number>` and publishes a GitHub Release with the APK attached
+2. Builds a signed APK with the release keystore from GitHub Actions secrets, versioned `1.0.<run number>`
+3. Tags the commit `v1.0.<run number>` and creates a GitHub Release with `TraderLens-1.0.<run number>.apk` attached
 
-The latest build is always on the repository's Releases page. `dist/` holds the copy delivered with the brief and is updated by hand.
+`dist/` always holds just the APK of the latest release; it is refreshed from that release after each run. Versioning, secrets, the `dist/` refresh command and how to verify a build are in [docs/RELEASE_PIPELINE.md](docs/RELEASE_PIPELINE.md).
 
 Minimum Android version: 8.0 (API 26). The app needs internet access for live data, but launches and shows cached data without it.
 
@@ -200,7 +200,7 @@ Package root: `com.ceylonapz.traderlens`
 | Built with Kotlin Multiplatform, native Android UI | ✅ | `sharedLogic` (Android and iOS targets), `androidApp` (Jetpack Compose) |
 | Edge cases handled (network loss, errors, volatility) | ⚠️ | Network loss, reconnect and stale price are handled. Missing: dedicated error screens with a manual retry button (errors recover by automatic retry only) |
 | README with build and run instructions | ✅ | `README.md` |
-| Release APK in dist/ at the repo root | ✅ | `dist/TraderLens-1.0.apk` (signed, minify off) |
+| Release APK in dist/ at the repo root | ✅ | `dist/TraderLens-1.0.1.apk`, the same signed APK as GitHub Release `v1.0.1` |
 
 ### Beyond the brief
 
@@ -221,7 +221,7 @@ Package root: `com.ceylonapz.traderlens`
 | Total P&L against the starting balance | ✅ | `Portfolio.profitLoss`, portfolio card and widget |
 | Shared logic verified on iOS (tests and live data on the simulator) | ⚠️ | All 131 common tests pass on the iOS simulator. Missing: no iOS UI, so live data was not shown on the simulator |
 | Unit tests | ✅ | 154 tests in `sharedLogic/src/commonTest` and `androidHostTest`, 0 failures |
-| CI on GitHub Actions, planned CD to Firebase and Play with Slack | ⚠️ | `.github/workflows/release.yml` tests, signs, tags and publishes a GitHub Release on every main push. Missing: Firebase App Distribution, Play upload and Slack notifications |
+| CI on GitHub Actions, planned CD to Firebase and Play with Slack | ⚠️ | `.github/workflows/release.yml`, [docs/RELEASE_PIPELINE.md](docs/RELEASE_PIPELINE.md): tests, signed APK, tag and GitHub Release on every main push. Missing: Firebase App Distribution, Play upload and Slack notifications |
 
 ### Bonus
 
