@@ -6,16 +6,22 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -25,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.window.core.layout.WindowSizeClass
 import com.ceylonapz.traderlens.domain.model.ConnectionState
 import com.ceylonapz.traderlens.domain.model.RetryStatus
 import com.ceylonapz.traderlens.presentation.portfolio.PortfolioCard
@@ -37,6 +44,8 @@ import org.koin.compose.viewmodel.koinViewModel
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+
+private val PORTRAIT_CHART_HEIGHT = 320.dp
 
 private val TimeFormat = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
 
@@ -59,23 +68,44 @@ fun ChartScreen(modifier: Modifier = Modifier, viewModel: ChartViewModel = koinV
 
 @Composable
 private fun ChartContent(uiState: ChartUiState, tradeActions: TradePanelActions, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
-        uiState.tradePanel.blockedBy?.let {
-            TradingPausedBanner(it, uiState.connection, uiState.updatedAtMillis)
-            Spacer(Modifier.size(12.dp))
-        }
-        uiState.portfolio?.let { PortfolioCard(it) }
-        Spacer(Modifier.size(12.dp))
-        TradePanel(uiState.tradePanel, tradeActions)
-        Spacer(Modifier.size(12.dp))
-        StreamStatus(uiState)
-        Spacer(Modifier.size(16.dp))
-        Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-            when {
-                uiState.candles.isNotEmpty() -> CandlestickChart(uiState.candles, Modifier.fillMaxSize())
-                uiState.connection == ConnectionState.Offline -> Text("Couldn't load the chart")
-                else -> CircularProgressIndicator()
+    val wide = currentWindowAdaptiveInfoV2().windowSizeClass
+        .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
+    if (wide) { // for fordable screens
+        Row(modifier = modifier.fillMaxSize().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Chart(uiState, Modifier.weight(1f).fillMaxHeight())
+            Column(Modifier.width(400.dp).fillMaxHeight().imePadding().verticalScroll(rememberScrollState())) {
+                TradeSection(uiState, tradeActions)
             }
+        }
+    } else {
+        Column(modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
+            TradeSection(uiState, tradeActions)
+            Spacer(Modifier.size(16.dp))
+            Chart(uiState, Modifier.fillMaxWidth().height(PORTRAIT_CHART_HEIGHT))
+        }
+    }
+}
+
+@Composable
+private fun TradeSection(uiState: ChartUiState, tradeActions: TradePanelActions) {
+    uiState.tradePanel.blockedBy?.let {
+        TradingPausedBanner(it, uiState.connection, uiState.updatedAtMillis)
+        Spacer(Modifier.size(12.dp))
+    }
+    uiState.portfolio?.let { PortfolioCard(it) }
+    Spacer(Modifier.size(12.dp))
+    TradePanel(uiState.tradePanel, tradeActions)
+    Spacer(Modifier.size(12.dp))
+    StreamStatus(uiState)
+}
+
+@Composable
+private fun Chart(uiState: ChartUiState, modifier: Modifier) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        when {
+            uiState.candles.isNotEmpty() -> CandlestickChart(uiState.candles, Modifier.fillMaxSize())
+            uiState.connection == ConnectionState.Offline -> Text("Couldn't load the chart")
+            else -> CircularProgressIndicator()
         }
     }
 }
