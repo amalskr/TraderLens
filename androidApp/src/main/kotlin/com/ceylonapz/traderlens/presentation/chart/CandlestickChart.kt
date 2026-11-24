@@ -19,11 +19,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ceylonapz.traderlens.domain.model.Candle
 import com.ceylonapz.traderlens.presentation.format.formatUsd
+import com.ceylonapz.traderlens.presentation.theme.DownColor
+import com.ceylonapz.traderlens.presentation.theme.UpColor
 import kotlin.math.abs
 import kotlin.math.max
 
-private val UpColor = Color(0xFF26A69A)
-private val DownColor = Color(0xFFEF5350)
 private val LabelStyle = TextStyle(color = Color.White, fontSize = 11.sp)
 
 @Composable

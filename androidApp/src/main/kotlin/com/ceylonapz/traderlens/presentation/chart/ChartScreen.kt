@@ -28,6 +28,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ceylonapz.traderlens.domain.model.ConnectionState
 import com.ceylonapz.traderlens.domain.model.RetryStatus
 import com.ceylonapz.traderlens.presentation.portfolio.PortfolioCard
+import com.ceylonapz.traderlens.presentation.theme.DownColor
+import com.ceylonapz.traderlens.presentation.theme.UpColor
 import com.ceylonapz.traderlens.presentation.trade.TradePanel
 import com.ceylonapz.traderlens.presentation.trade.TradePanelActions
 import kotlinx.coroutines.delay
@@ -98,9 +100,9 @@ private fun StatusRow(title: String, value: @Composable () -> Unit) {
 @Composable
 private fun ConnectionLabel(connection: ConnectionState) {
     val color = when (connection) {
-        ConnectionState.Connected -> Color(0xFF26A69A)
+        ConnectionState.Connected -> UpColor
         ConnectionState.Reconnecting -> Color(0xFFFFA726)
-        ConnectionState.Offline -> Color(0xFFEF5350)
+        ConnectionState.Offline -> DownColor
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(8.dp).background(color, CircleShape))
