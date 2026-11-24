@@ -20,6 +20,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.runtime.Composable
@@ -33,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
 import com.ceylonapz.traderlens.domain.model.ConnectionState
+import com.ceylonapz.traderlens.domain.model.KlineInterval
 import com.ceylonapz.traderlens.domain.model.RetryStatus
 import com.ceylonapz.traderlens.presentation.portfolio.PortfolioCard
 import com.ceylonapz.traderlens.presentation.theme.DownColor
@@ -63,16 +67,21 @@ fun ChartScreen(modifier: Modifier = Modifier, viewModel: ChartViewModel = koinV
             onConfirm = viewModel::onConfirm,
         )
     }
-    ChartContent(uiState, tradeActions, modifier = modifier)
+    ChartContent(uiState, tradeActions, viewModel::onIntervalChange, modifier = modifier)
 }
 
 @Composable
-private fun ChartContent(uiState: ChartUiState, tradeActions: TradePanelActions, modifier: Modifier = Modifier) {
+private fun ChartContent(
+    uiState: ChartUiState,
+    tradeActions: TradePanelActions,
+    onIntervalChange: (KlineInterval) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val wide = currentWindowAdaptiveInfoV2().windowSizeClass
         .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
     if (wide) { // for fordable screens
         Row(modifier = modifier.fillMaxSize().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Chart(uiState, Modifier.weight(1f).fillMaxHeight())
+            Chart(uiState, onIntervalChange, Modifier.weight(1f).fillMaxHeight())
             Column(Modifier.width(400.dp).fillMaxHeight().imePadding().verticalScroll(rememberScrollState())) {
                 TradeSection(uiState, tradeActions)
             }
@@ -81,7 +90,7 @@ private fun ChartContent(uiState: ChartUiState, tradeActions: TradePanelActions,
         Column(modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
             TradeSection(uiState, tradeActions)
             Spacer(Modifier.size(16.dp))
-            Chart(uiState, Modifier.fillMaxWidth().height(PORTRAIT_CHART_HEIGHT))
+            Chart(uiState, onIntervalChange, Modifier.fillMaxWidth().height(PORTRAIT_CHART_HEIGHT))
         }
     }
 }
@@ -100,12 +109,31 @@ private fun TradeSection(uiState: ChartUiState, tradeActions: TradePanelActions)
 }
 
 @Composable
-private fun Chart(uiState: ChartUiState, modifier: Modifier) {
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        when {
-            uiState.candles.isNotEmpty() -> CandlestickChart(uiState.candles, Modifier.fillMaxSize())
-            uiState.connection == ConnectionState.Offline -> Text("Couldn't load the chart")
-            else -> CircularProgressIndicator()
+private fun Chart(uiState: ChartUiState, onIntervalChange: (KlineInterval) -> Unit, modifier: Modifier) {
+    Column(modifier) {
+        IntervalSelector(uiState.interval, onIntervalChange)
+        Spacer(Modifier.size(8.dp))
+        Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+            when {
+                uiState.candles.isNotEmpty() -> CandlestickChart(uiState.candles, Modifier.fillMaxSize())
+                uiState.connection == ConnectionState.Offline -> Text("Couldn't load the chart")
+                else -> CircularProgressIndicator()
+            }
+        }
+    }
+}
+
+@Composable
+private fun IntervalSelector(selected: KlineInterval, onSelect: (KlineInterval) -> Unit) {
+    val options = KlineInterval.entries
+    SingleChoiceSegmentedButtonRow {
+        options.forEachIndexed { index, interval ->
+            SegmentedButton(
+                selected = interval == selected,
+                onClick = { onSelect(interval) },
+                shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                label = { Text(interval.code) },
+            )
         }
     }
 }

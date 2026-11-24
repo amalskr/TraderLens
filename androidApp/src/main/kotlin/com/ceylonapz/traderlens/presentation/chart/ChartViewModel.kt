@@ -21,6 +21,9 @@ import com.ceylonapz.traderlens.domain.usecase.ObservePortfolioUseCase
 import com.ceylonapz.traderlens.domain.usecase.ObserveTradingBlockUseCase
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.emitAll
@@ -42,7 +45,12 @@ class ChartViewModel(
     private val savedState: SavedStateHandle, //  process death
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ChartUiState(tradePanel = restoredPanel()))
+    private val _uiState = MutableStateFlow(
+        ChartUiState(
+            tradePanel = restoredPanel(),
+            interval = savedState.get<String>(KEY_INTERVAL)?.let(KlineInterval::valueOf) ?: KlineInterval.ONE_MINUTE,
+        ),
+    )
 
     // Stop live market when BG and reconnect in foreground
     val uiState: StateFlow<ChartUiState> = flow {
@@ -58,6 +66,22 @@ class ChartViewModel(
             observePortfolio().collect { portfolio ->
                 _uiState.update { it.copy(portfolio = portfolio).withPreview() }
             }
+        }
+    }
+
+    fun onIntervalChange(interval: KlineInterval) {
+        if (interval == _uiState.value.interval) return
+        savedState[KEY_INTERVAL] = interval.name
+        _uiState.update {
+            it.copy(
+                interval = interval,
+                candles = emptyList(),
+                updatedAtMillis = null,
+                lastUpdatedOpenTime = null,
+                lastAppendedOpenTime = null,
+                reconnects = 0,
+                lastGapFill = null,
+            )
         }
     }
 
@@ -120,8 +144,13 @@ class ChartViewModel(
                         updatePanel { it.copy(blockedBy = block, confirming = it.confirming && block == null) }
                     }
                 }
-                observeMarket(KlineInterval.ONE_MINUTE, CANDLE_LIMIT).collect { feed ->
-                    _uiState.update { it.apply(feed).copy(updatedAtMillis = feed.updatedAtMillis) }
+                _uiState.map { it.interval }.distinctUntilChanged().collectLatest { interval ->
+                    observeMarket(interval, CANDLE_LIMIT).collect { feed ->
+                        // A feed for the previous interval can still land before collectLatest cancels it.
+                        _uiState.update {
+                            if (it.interval != interval) it else it.apply(feed).copy(updatedAtMillis = feed.updatedAtMillis)
+                        }
+                    }
                 }
             }
         } finally {
@@ -193,5 +222,6 @@ class ChartViewModel(
         const val KEY_SIDE = "side"
         const val KEY_UNIT = "unit"
         const val KEY_AMOUNT = "amount"
+        const val KEY_INTERVAL = "interval"
     }
 }
