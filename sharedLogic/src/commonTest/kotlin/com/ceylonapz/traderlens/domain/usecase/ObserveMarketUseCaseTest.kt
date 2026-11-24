@@ -6,6 +6,7 @@ import com.ceylonapz.traderlens.domain.model.CandleFeedEvent
 import com.ceylonapz.traderlens.domain.model.ConnectionState
 import com.ceylonapz.traderlens.domain.model.KlineInterval
 import com.ceylonapz.traderlens.domain.model.LivePrice
+import com.ceylonapz.traderlens.domain.model.PriceSnapshot
 import com.ceylonapz.traderlens.domain.model.RetryStatus
 import com.ceylonapz.traderlens.domain.repository.MarketRepository
 import kotlinx.coroutines.flow.Flow
@@ -31,6 +32,8 @@ class ObserveMarketUseCaseTest {
             requested = interval to limit
             return flowOf(feed)
         }
+        override fun observeLastKnownPrice() = flowOf<PriceSnapshot?>(null)
+        override suspend fun refreshCandles(interval: KlineInterval, limit: Int) = true
     }
 
     @Test

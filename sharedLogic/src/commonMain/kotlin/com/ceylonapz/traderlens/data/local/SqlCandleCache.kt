@@ -1,11 +1,16 @@
 package com.ceylonapz.traderlens.data.local
 
 import com.ceylonapz.traderlens.domain.model.Candle
+import app.cash.sqldelight.coroutines.asFlow
+import app.cash.sqldelight.coroutines.mapToOneOrNull
 import com.ceylonapz.traderlens.domain.model.KlineInterval
+import com.ceylonapz.traderlens.domain.model.PriceSnapshot
 import com.ceylonapz.traderlens.domain.model.money.PriceCents
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 class SqlCandleCache(
@@ -20,6 +25,11 @@ class SqlCandleCache(
         val lastPrice = database.lastPriceQueries.select().executeAsOneOrNull()
         if (candles.isEmpty() || lastPrice == null) null else CachedCandles(candles, lastPrice.timestamp_millis)
     }
+
+    override fun observeLastPrice(): Flow<PriceSnapshot?> =
+        database.lastPriceQueries.select().asFlow().mapToOneOrNull(dispatcher).map { row ->
+            row?.let { PriceSnapshot(PriceCents(it.price_cents), it.timestamp_millis) }
+        }
 
     override suspend fun save(
         interval: KlineInterval,

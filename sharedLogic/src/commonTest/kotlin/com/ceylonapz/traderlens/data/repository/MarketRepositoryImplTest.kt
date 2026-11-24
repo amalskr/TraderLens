@@ -13,6 +13,7 @@ import com.ceylonapz.traderlens.domain.model.CandleFeedEvent
 import com.ceylonapz.traderlens.domain.model.ConnectionState
 import com.ceylonapz.traderlens.domain.model.RetryStatus
 import com.ceylonapz.traderlens.domain.model.KlineInterval
+import com.ceylonapz.traderlens.domain.model.PriceSnapshot
 import com.ceylonapz.traderlens.domain.model.money.PriceCents
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandler
@@ -22,6 +23,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
@@ -30,6 +32,7 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
@@ -316,6 +319,24 @@ class MarketRepositoryImplTest {
         val last = repo.observeCandles(KlineInterval.ONE_MINUTE, limit = 10).toList().last()
 
         assertEquals(CandleFeed(listOf(candle(1, 100)), CandleFeedEvent.GapFillFailed, 500), last)
+        assertTrue(cache.saves.isEmpty())
+    }
+
+    @Test
+    fun refreshCandlesSavesRestWindowToCache() = runTest {
+        val repo = repository(handler = json("[${restKline(1, "1.00")},${restKline(2, "2.00")}]"))
+
+        assertTrue(repo.refreshCandles(KlineInterval.ONE_MINUTE, limit = 10))
+
+        assertEquals(listOf(FakeCandleCache.Save(listOf(candle(1, 100), candle(2, 200)), 1, now)), cache.saves)
+        assertEquals(PriceSnapshot(PriceCents(200), now), repo.observeLastKnownPrice().first())
+    }
+
+    @Test
+    fun failedRefreshLeavesCacheUntouched() = runTest {
+        val repo = repository(handler = { respondError(HttpStatusCode.InternalServerError) })
+
+        assertFalse(repo.refreshCandles(KlineInterval.ONE_MINUTE, limit = 10))
         assertTrue(cache.saves.isEmpty())
     }
 }

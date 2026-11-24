@@ -2,7 +2,9 @@ package com.ceylonapz.traderlens.data.local
 
 import com.ceylonapz.traderlens.domain.model.Candle
 import com.ceylonapz.traderlens.domain.model.KlineInterval
+import com.ceylonapz.traderlens.domain.model.PriceSnapshot
 import com.ceylonapz.traderlens.domain.model.money.PriceCents
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -43,5 +45,15 @@ class SqlCandleCacheTest {
 
         assertEquals(listOf(2L, 3L), cache.load(interval, limit = 10)?.candles?.map { it.openTimeMillis })
         assertEquals(130, database.lastPriceQueries.select().executeAsOne().price_cents)
+    }
+
+    @Test
+    fun lastPriceFollowsSaves() = runTest {
+        val cache = SqlCandleCache(inMemoryDatabase(), UnconfinedTestDispatcher(testScheduler))
+
+        assertNull(cache.observeLastPrice().first())
+        cache.save(interval, listOf(candle(1, 110), candle(2, 120)), keepFromOpenTime = 1, updatedAtMillis = 5_000)
+
+        assertEquals(PriceSnapshot(PriceCents(120), 5_000), cache.observeLastPrice().first())
     }
 }

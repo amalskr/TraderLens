@@ -32,6 +32,9 @@ dependencies {
     implementation(libs.navigation3.ui)
     implementation(libs.androidx.lifecycle.viewmodelNavigation3)
 
+    // Home screen widget
+    implementation(libs.glance.appwidget)
+
     // Images (the Ktor OkHttp engine comes from sharedLogic)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.ktor3)

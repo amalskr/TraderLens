@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">TraderLens</string>
+    <string name="widget_description">BTC price and portfolio value</string>
 </resources>

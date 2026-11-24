@@ -11,6 +11,7 @@ import com.ceylonapz.traderlens.domain.model.CandleFeedEvent
 import com.ceylonapz.traderlens.domain.model.ConnectionState
 import com.ceylonapz.traderlens.domain.model.KlineInterval
 import com.ceylonapz.traderlens.domain.model.LivePrice
+import com.ceylonapz.traderlens.domain.model.PriceSnapshot
 import com.ceylonapz.traderlens.domain.model.RetryStatus
 import com.ceylonapz.traderlens.domain.model.merge
 import com.ceylonapz.traderlens.domain.repository.MarketRepository
@@ -51,6 +52,17 @@ class MarketRepositoryImpl(
         } catch (e: Exception) {
             Result.failure(e)
         }
+
+    override fun observeLastKnownPrice(): Flow<PriceSnapshot?> = cache.observeLastPrice()
+
+    override suspend fun refreshCandles(interval: KlineInterval, limit: Int): Boolean =
+        getCandles(interval, limit).fold(
+            onSuccess = { candles ->
+                if (candles.isNotEmpty()) cache.save(interval, candles, candles.first().openTimeMillis, nowMillis())
+                true
+            },
+            onFailure = { false },
+        )
 
     //BinanceStream,
     override fun observeCandles(interval: KlineInterval, limit: Int): Flow<CandleFeed> = flow {
