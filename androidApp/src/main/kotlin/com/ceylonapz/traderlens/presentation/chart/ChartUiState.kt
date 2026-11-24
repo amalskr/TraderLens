@@ -8,7 +8,6 @@ import com.ceylonapz.traderlens.presentation.trade.TradePanelState
 
 data class ChartUiState(
     val portfolio: Portfolio? = null,
-    val tradeCount: Int = 0,
     val tradePanel: TradePanelState = TradePanelState(),
     val candles: List<Candle> = emptyList(),
     val connection: ConnectionState = ConnectionState.Offline,

@@ -16,7 +16,6 @@ import com.ceylonapz.traderlens.domain.usecase.ExecuteTradeUseCase
 import com.ceylonapz.traderlens.domain.usecase.InitializeWalletUseCase
 import com.ceylonapz.traderlens.domain.usecase.ObserveMarketUseCase
 import com.ceylonapz.traderlens.domain.usecase.ObservePortfolioUseCase
-import com.ceylonapz.traderlens.domain.usecase.ObserveTradesUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -29,7 +28,6 @@ class ChartViewModel(
     private val initializeWallet: InitializeWalletUseCase,
     private val observeMarket: ObserveMarketUseCase,
     private val observePortfolio: ObservePortfolioUseCase,
-    private val observeTrades: ObserveTradesUseCase,
     private val executeTrade: ExecuteTradeUseCase,
     private val orderValidator: OrderValidator,
 ) : ViewModel() {
@@ -42,11 +40,6 @@ class ChartViewModel(
             initializeWallet()
             observePortfolio().collect { portfolio ->
                 _uiState.update { it.copy(portfolio = portfolio).withPreview() }
-            }
-        }
-        viewModelScope.launch {
-            observeTrades().collect { trades ->
-                _uiState.update { it.copy(tradeCount = trades.size) }
             }
         }
         viewModelScope.launch {

@@ -27,9 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ceylonapz.traderlens.domain.model.ConnectionState
 import com.ceylonapz.traderlens.domain.model.RetryStatus
-import com.ceylonapz.traderlens.domain.model.Portfolio
-import com.ceylonapz.traderlens.presentation.format.formatBtc
-import com.ceylonapz.traderlens.presentation.format.formatUsd
+import com.ceylonapz.traderlens.presentation.portfolio.PortfolioCard
 import com.ceylonapz.traderlens.presentation.trade.TradePanel
 import com.ceylonapz.traderlens.presentation.trade.TradePanelActions
 import kotlinx.coroutines.delay
@@ -60,7 +58,7 @@ fun ChartScreen(modifier: Modifier = Modifier, viewModel: ChartViewModel = koinV
 @Composable
 private fun ChartContent(uiState: ChartUiState, tradeActions: TradePanelActions, modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
-        uiState.portfolio?.let { PortfolioCard(it, uiState.tradeCount) }
+        uiState.portfolio?.let { PortfolioCard(it) }
         Spacer(Modifier.size(12.dp))
         TradePanel(uiState.tradePanel, tradeActions)
         Spacer(Modifier.size(12.dp))
@@ -72,20 +70,6 @@ private fun ChartContent(uiState: ChartUiState, tradeActions: TradePanelActions,
                 uiState.connection == ConnectionState.Offline -> Text("Couldn't load the chart")
                 else -> CircularProgressIndicator()
             }
-        }
-    }
-}
-
-@Composable
-private fun PortfolioCard(portfolio: Portfolio, tradeCount: Int) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Portfolio", style = MaterialTheme.typography.titleMedium)
-            StatusRow("USD") { Text(portfolio.wallet.usd.formatUsd()) }
-            StatusRow("BTC") { Text(portfolio.wallet.btc.formatBtc()) }
-            StatusRow("Price") { Text(portfolio.price?.formatUsd() ?: "Waiting for live price") }
-            StatusRow("Total") { Text(portfolio.totalValue?.formatUsd() ?: "-") }
-            StatusRow("Trades") { Text(tradeCount.toString()) }
         }
     }
 }
