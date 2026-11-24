@@ -16,6 +16,7 @@ import com.ceylonapz.traderlens.domain.usecase.ExecuteTradeUseCase
 import com.ceylonapz.traderlens.domain.usecase.InitializeWalletUseCase
 import com.ceylonapz.traderlens.domain.usecase.ObserveMarketUseCase
 import com.ceylonapz.traderlens.domain.usecase.ObservePortfolioUseCase
+import com.ceylonapz.traderlens.domain.usecase.ObserveTradingBlockUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -28,6 +29,7 @@ class ChartViewModel(
     private val initializeWallet: InitializeWalletUseCase,
     private val observeMarket: ObserveMarketUseCase,
     private val observePortfolio: ObservePortfolioUseCase,
+    private val observeTradingBlock: ObserveTradingBlockUseCase,
     private val executeTrade: ExecuteTradeUseCase,
     private val orderValidator: OrderValidator,
 ) : ViewModel() {
@@ -45,6 +47,11 @@ class ChartViewModel(
         viewModelScope.launch {
             observeMarket.connectionState.collect { connection ->
                 _uiState.update { it.copy(connection = connection) }
+            }
+        }
+        viewModelScope.launch {
+            observeTradingBlock().collect { block ->
+                updatePanel { it.copy(blockedBy = block, confirming = it.confirming && block == null) }
             }
         }
         viewModelScope.launch {
@@ -109,6 +116,7 @@ class ChartViewModel(
     private fun ChartUiState.preview(): OrderPreview? {
         val panel = tradePanel
         if (panel.amount.isEmpty()) return null
+        panel.blockedBy?.let { return OrderPreview.Blocked(it) }
         val price = portfolio?.price ?: return OrderPreview.Blocked(TradeRejection.STALE_PRICE)
         val order = parseMarketOrder(panel.side, panel.unit, panel.amount, price)
             ?: return OrderPreview.Blocked(TradeRejection.INVALID_AMOUNT)

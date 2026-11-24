@@ -17,6 +17,7 @@ data class TradePanelState(
     val confirming: Boolean = false,
     val submitting: Boolean = false,
     val lastResult: TradeResult? = null,
+    val blockedBy: TradeRejection? = TradeRejection.DISCONNECTED,
 )
 
 sealed interface OrderPreview {

@@ -52,10 +52,11 @@ fun TradePanel(state: TradePanelState, actions: TradePanelActions, modifier: Mod
                     label = { Text("Amount") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    enabled = state.blockedBy == null,
                     modifier = Modifier.weight(1f),
                 )
                 Choice(AmountUnit.entries, state.unit, { it.name }, actions.onUnitChange, Modifier.width(120.dp))
-                TextButton(onClick = actions.onMax) { Text("Max") }
+                TextButton(onClick = actions.onMax, enabled = state.blockedBy == null) { Text("Max") }
             }
             PreviewLine(state)
             Button(

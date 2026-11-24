@@ -19,6 +19,7 @@ import com.ceylonapz.traderlens.domain.usecase.InitializeWalletUseCase
 import com.ceylonapz.traderlens.domain.usecase.ObserveMarketUseCase
 import com.ceylonapz.traderlens.domain.usecase.ObservePortfolioUseCase
 import com.ceylonapz.traderlens.domain.usecase.ObserveTradesUseCase
+import com.ceylonapz.traderlens.domain.usecase.ObserveTradingBlockUseCase
 import org.koin.dsl.bind
 import org.koin.dsl.module
 import kotlin.time.Clock
@@ -36,6 +37,7 @@ fun sharedModule(enableLogging: Boolean) = module {
     factory { ObservePortfolioUseCase(get(), get()) }
     factory { ObserveTradesUseCase(get()) }
     factory { ObserveMarketUseCase(get()) }
+    factory { ObserveTradingBlockUseCase(get()) }
     single<TradeRepository> { TradeRepositoryImpl(get()) }
     // Single instance so its Mutex guards every caller.
     factory { OrderValidator() }
