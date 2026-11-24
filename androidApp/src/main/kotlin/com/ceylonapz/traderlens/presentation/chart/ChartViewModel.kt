@@ -1,5 +1,6 @@
 package com.ceylonapz.traderlens.presentation.chart
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ceylonapz.traderlens.domain.model.AmountUnit
@@ -38,9 +39,10 @@ class ChartViewModel(
     private val observeTradingBlock: ObserveTradingBlockUseCase,
     private val executeTrade: ExecuteTradeUseCase,
     private val orderValidator: OrderValidator,
+    private val savedState: SavedStateHandle, //  process death
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ChartUiState())
+    private val _uiState = MutableStateFlow(ChartUiState(tradePanel = restoredPanel()))
 
     // Stop live market when BG and reconnect in foreground
     val uiState: StateFlow<ChartUiState> = flow {
@@ -130,7 +132,18 @@ class ChartViewModel(
 
     private fun updatePanel(transform: (TradePanelState) -> TradePanelState) {
         _uiState.update { it.copy(tradePanel = transform(it.tradePanel)).withPreview() }
+        val panel = _uiState.value.tradePanel
+        savedState[KEY_SIDE] = panel.side.name
+        savedState[KEY_UNIT] = panel.unit.name
+        savedState[KEY_AMOUNT] = panel.amount
     }
+
+    // Only the form survives process death; a confirmation is never restored because the price has moved since.
+    private fun restoredPanel() = TradePanelState(
+        side = savedState.get<String>(KEY_SIDE)?.let(TradeSide::valueOf) ?: TradeSide.BUY,
+        unit = savedState.get<String>(KEY_UNIT)?.let(AmountUnit::valueOf) ?: AmountUnit.USD,
+        amount = savedState[KEY_AMOUNT] ?: "",
+    )
 
     private fun ChartUiState.withPreview(): ChartUiState = copy(tradePanel = tradePanel.copy(preview = preview()))
 
@@ -177,5 +190,8 @@ class ChartViewModel(
     private companion object {
         const val CANDLE_LIMIT = 100
         const val STOP_TIMEOUT_MILLIS = 5_000L
+        const val KEY_SIDE = "side"
+        const val KEY_UNIT = "unit"
+        const val KEY_AMOUNT = "amount"
     }
 }
