@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.ceylonapz.traderlens.domain.model.AmountUnit
 import com.ceylonapz.traderlens.domain.model.CandleFeed
 import com.ceylonapz.traderlens.domain.model.CandleFeedEvent
+import com.ceylonapz.traderlens.domain.model.ConnectionState
 import com.ceylonapz.traderlens.domain.model.KlineInterval
 import com.ceylonapz.traderlens.domain.model.TradeRejection
 import com.ceylonapz.traderlens.domain.model.TradeResult
@@ -17,8 +18,13 @@ import com.ceylonapz.traderlens.domain.usecase.InitializeWalletUseCase
 import com.ceylonapz.traderlens.domain.usecase.ObserveMarketUseCase
 import com.ceylonapz.traderlens.domain.usecase.ObservePortfolioUseCase
 import com.ceylonapz.traderlens.domain.usecase.ObserveTradingBlockUseCase
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import com.ceylonapz.traderlens.presentation.format.toPlainAmount
 import com.ceylonapz.traderlens.presentation.trade.OrderPreview
@@ -35,33 +41,20 @@ class ChartViewModel(
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ChartUiState())
-    val uiState = _uiState.asStateFlow()
+
+    // Stop live market when BG and reconnect in foreground
+    val uiState: StateFlow<ChartUiState> = flow {
+        coroutineScope {
+            launch { observeLiveMarket() }
+            emitAll(_uiState)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), _uiState.value)
 
     init {
         viewModelScope.launch {
             initializeWallet()
             observePortfolio().collect { portfolio ->
                 _uiState.update { it.copy(portfolio = portfolio).withPreview() }
-            }
-        }
-        viewModelScope.launch {
-            observeMarket.connectionState.collect { connection ->
-                _uiState.update { it.copy(connection = connection) }
-            }
-        }
-        viewModelScope.launch {
-            observeTradingBlock().collect { block ->
-                updatePanel { it.copy(blockedBy = block, confirming = it.confirming && block == null) }
-            }
-        }
-        viewModelScope.launch {
-            observeMarket.retryStatus.collect { retry ->
-                _uiState.update { it.copy(retry = retry) }
-            }
-        }
-        viewModelScope.launch {
-            observeMarket(KlineInterval.ONE_MINUTE, CANDLE_LIMIT).collect { feed ->
-                _uiState.update { it.apply(feed).copy(updatedAtMillis = feed.updatedAtMillis) }
             }
         }
     }
@@ -104,6 +97,34 @@ class ChartViewModel(
                 val cleared = if (result is TradeResult.Success) it.copy(amount = "") else it
                 cleared.copy(confirming = false, submitting = false, lastResult = result)
             }
+        }
+    }
+
+    private suspend fun observeLiveMarket() {
+        try {
+            coroutineScope {
+                launch {
+                    observeMarket.connectionState.collect { connection ->
+                        _uiState.update { it.copy(connection = connection) }
+                    }
+                }
+                launch {
+                    observeMarket.retryStatus.collect { retry ->
+                        _uiState.update { it.copy(retry = retry) }
+                    }
+                }
+                launch {
+                    observeTradingBlock().collect { block ->
+                        updatePanel { it.copy(blockedBy = block, confirming = it.confirming && block == null) }
+                    }
+                }
+                observeMarket(KlineInterval.ONE_MINUTE, CANDLE_LIMIT).collect { feed ->
+                    _uiState.update { it.apply(feed).copy(updatedAtMillis = feed.updatedAtMillis) }
+                }
+            }
+        } finally {
+            _uiState.update { it.copy(connection = ConnectionState.Offline, retry = null) }
+            updatePanel { it.copy(blockedBy = TradeRejection.DISCONNECTED, confirming = false) }
         }
     }
 
@@ -155,5 +176,6 @@ class ChartViewModel(
 
     private companion object {
         const val CANDLE_LIMIT = 100
+        const val STOP_TIMEOUT_MILLIS = 5_000L
     }
 }
