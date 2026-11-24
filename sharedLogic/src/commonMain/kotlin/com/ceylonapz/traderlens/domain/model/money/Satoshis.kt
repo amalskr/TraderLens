@@ -14,5 +14,7 @@ value class Satoshis(val value: Long) : Comparable<Satoshis> {
     companion object {
         const val PER_BTC: Long = 100_000_000L
         val ZERO = Satoshis(0)
+
+        fun parseOrNull(text: String): Satoshis? = parseFixedPointOrNull(text, scale = 8)?.let(::Satoshis)
     }
 }

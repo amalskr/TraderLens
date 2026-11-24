@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -20,22 +19,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ceylonapz.traderlens.domain.model.ConnectionState
-import com.ceylonapz.traderlens.domain.model.MarketOrder
-import com.ceylonapz.traderlens.domain.model.TradeRejection
-import com.ceylonapz.traderlens.domain.model.TradeResult
-import com.ceylonapz.traderlens.domain.model.TradeSide
-import com.ceylonapz.traderlens.domain.model.money.Satoshis
-import com.ceylonapz.traderlens.domain.model.money.UsdCents
 import com.ceylonapz.traderlens.domain.model.RetryStatus
 import com.ceylonapz.traderlens.domain.model.Portfolio
 import com.ceylonapz.traderlens.presentation.format.formatBtc
 import com.ceylonapz.traderlens.presentation.format.formatUsd
+import com.ceylonapz.traderlens.presentation.trade.TradePanel
+import com.ceylonapz.traderlens.presentation.trade.TradePanelActions
 import kotlinx.coroutines.delay
 import org.koin.compose.viewmodel.koinViewModel
 import java.time.Instant
@@ -47,15 +43,26 @@ private val TimeFormat = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.sy
 @Composable
 fun ChartScreen(modifier: Modifier = Modifier, viewModel: ChartViewModel = koinViewModel()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    ChartContent(uiState, onTrade = viewModel::trade, modifier = modifier)
+    val tradeActions = remember(viewModel) {
+        TradePanelActions(
+            onSideChange = viewModel::onSideChange,
+            onUnitChange = viewModel::onUnitChange,
+            onAmountChange = viewModel::onAmountChange,
+            onMax = viewModel::onMax,
+            onReview = viewModel::onReview,
+            onDismissConfirm = viewModel::onDismissConfirm,
+            onConfirm = viewModel::onConfirm,
+        )
+    }
+    ChartContent(uiState, tradeActions, modifier = modifier)
 }
 
 @Composable
-private fun ChartContent(uiState: ChartUiState, onTrade: (MarketOrder) -> Unit, modifier: Modifier = Modifier) {
+private fun ChartContent(uiState: ChartUiState, tradeActions: TradePanelActions, modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         uiState.portfolio?.let { PortfolioCard(it, uiState.tradeCount) }
         Spacer(Modifier.size(12.dp))
-        TestTradeButtons(uiState, onTrade)
+        TradePanel(uiState.tradePanel, tradeActions)
         Spacer(Modifier.size(12.dp))
         StreamStatus(uiState)
         Spacer(Modifier.size(16.dp))
@@ -80,39 +87,6 @@ private fun PortfolioCard(portfolio: Portfolio, tradeCount: Int) {
             StatusRow("Total") { Text(portfolio.totalValue?.formatUsd() ?: "-") }
             StatusRow("Trades") { Text(tradeCount.toString()) }
         }
-    }
-}
-
-@Composable
-private fun TestTradeButtons(uiState: ChartUiState, onTrade: (MarketOrder) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = { onTrade(MarketOrder.Buy(TEST_BUY_USD)) }) {
-                Text("Buy ${TEST_BUY_USD.formatUsd()}")
-            }
-            Button(onClick = { onTrade(MarketOrder.Sell(TEST_SELL_BTC)) }) {
-                Text("Sell ${TEST_SELL_BTC.formatBtc()}")
-            }
-        }
-        uiState.lastTrade?.let { Text(it.label(), style = MaterialTheme.typography.bodyMedium) }
-    }
-}
-
-private val TEST_BUY_USD = UsdCents(100_000)
-private val TEST_SELL_BTC = Satoshis(1_000_000)
-
-private fun TradeResult.label(): String = when (this) {
-    is TradeResult.Success -> {
-        val verb = if (trade.side == TradeSide.BUY) "Bought" else "Sold"
-        "#${trade.id} $verb ${trade.btc.formatBtc()} for ${trade.usd.formatUsd()} at ${trade.price.formatUsd()}"
-    }
-    is TradeResult.Rejected -> when (reason) {
-        TradeRejection.INSUFFICIENT_FUNDS -> "Rejected: insufficient funds"
-        TradeRejection.DISCONNECTED -> "Rejected: not connected"
-        TradeRejection.STALE_PRICE -> "Rejected: price is stale"
-        TradeRejection.INVALID_PRICE -> "Rejected: invalid price"
-        TradeRejection.INVALID_AMOUNT -> "Rejected: invalid amount"
-        TradeRejection.BELOW_MINIMUM -> "Rejected: below minimum order"
     }
 }
 

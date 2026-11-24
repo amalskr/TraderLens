@@ -12,6 +12,7 @@ import com.ceylonapz.traderlens.domain.repository.MarketRepository
 import com.ceylonapz.traderlens.domain.repository.PriceFeed
 import com.ceylonapz.traderlens.domain.repository.TradeRepository
 import com.ceylonapz.traderlens.domain.repository.WalletRepository
+import com.ceylonapz.traderlens.domain.trading.OrderValidator
 import com.ceylonapz.traderlens.domain.trading.TradingEngine
 import com.ceylonapz.traderlens.domain.usecase.ExecuteTradeUseCase
 import com.ceylonapz.traderlens.domain.usecase.InitializeWalletUseCase
@@ -37,5 +38,6 @@ fun sharedModule(enableLogging: Boolean) = module {
     factory { ObserveMarketUseCase(get()) }
     single<TradeRepository> { TradeRepositoryImpl(get()) }
     // Single instance so its Mutex guards every caller.
+    factory { OrderValidator() }
     single { TradingEngine(get(), get(), nowMillis = { Clock.System.now().toEpochMilliseconds() }) }
 }

@@ -13,30 +13,7 @@ value class PriceCents(val value: Long) : Comparable<PriceCents> {
     override fun compareTo(other: PriceCents): Int = value.compareTo(other.value)
 
     companion object {
-        private const val CENT_DIGITS = 2
-
-        // Parses "91234.56000000" without floating point, truncating past 2 decimals; null if invalid.
-        fun parseOrNull(text: String): PriceCents? {
-            val dot = text.indexOf('.')
-            val wholePart = if (dot < 0) text else text.substring(0, dot)
-            val fractionPart = if (dot < 0) "" else text.substring(dot + 1)
-
-            if (wholePart.isEmpty() || !wholePart.isAllDigits()) return null
-            if (dot >= 0 && (fractionPart.isEmpty() || !fractionPart.isAllDigits())) return null
-
-            var dollars = 0L
-            for (c in wholePart) {
-                val digit = (c - '0').toLong()
-                if (dollars > (Long.MAX_VALUE - digit) / 10) return null
-                dollars = dollars * 10 + digit
-            }
-
-            val centsFromDollars = multiplyOrNull(dollars, 100) ?: return null
-            val extraCents = fractionPart.padEnd(CENT_DIGITS, '0').take(CENT_DIGITS).toLong()
-            val total = addOrNull(centsFromDollars, extraCents) ?: return null
-            return PriceCents(total)
-        }
-
-        private fun String.isAllDigits(): Boolean = all { it in '0'..'9' }
+        // Parses "91234.56000000", truncating past 2 decimals; null if invalid.
+        fun parseOrNull(text: String): PriceCents? = parseFixedPointOrNull(text, scale = 2)?.let(::PriceCents)
     }
 }

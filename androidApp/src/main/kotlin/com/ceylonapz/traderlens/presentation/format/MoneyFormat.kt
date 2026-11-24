@@ -12,3 +12,9 @@ fun PriceCents.formatUsd(): String = UsdCents(value).formatUsd()
 
 fun Satoshis.formatBtc(): String =
     String.format(Locale.US, "%d.%08d BTC", value / Satoshis.PER_BTC, value % Satoshis.PER_BTC)
+
+// Unformatted values for editable text fields.
+fun UsdCents.toPlainAmount(): String = String.format(Locale.US, "%d.%02d", value / 100, value % 100)
+
+fun Satoshis.toPlainAmount(): String =
+    String.format(Locale.US, "%d.%08d", value / Satoshis.PER_BTC, value % Satoshis.PER_BTC)

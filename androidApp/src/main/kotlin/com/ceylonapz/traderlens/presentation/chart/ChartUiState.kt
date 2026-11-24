@@ -4,12 +4,12 @@ import com.ceylonapz.traderlens.domain.model.Candle
 import com.ceylonapz.traderlens.domain.model.ConnectionState
 import com.ceylonapz.traderlens.domain.model.Portfolio
 import com.ceylonapz.traderlens.domain.model.RetryStatus
-import com.ceylonapz.traderlens.domain.model.TradeResult
+import com.ceylonapz.traderlens.presentation.trade.TradePanelState
 
 data class ChartUiState(
     val portfolio: Portfolio? = null,
     val tradeCount: Int = 0,
-    val lastTrade: TradeResult? = null,
+    val tradePanel: TradePanelState = TradePanelState(),
     val candles: List<Candle> = emptyList(),
     val connection: ConnectionState = ConnectionState.Offline,
     val retry: RetryStatus? = null,

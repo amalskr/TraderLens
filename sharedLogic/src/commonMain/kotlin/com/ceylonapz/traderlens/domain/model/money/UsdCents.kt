@@ -14,5 +14,7 @@ value class UsdCents(val value: Long) : Comparable<UsdCents> {
 
     companion object {
         val ZERO = UsdCents(0)
+
+        fun parseOrNull(text: String): UsdCents? = parseFixedPointOrNull(text, scale = 2)?.let(::UsdCents)
     }
 }
