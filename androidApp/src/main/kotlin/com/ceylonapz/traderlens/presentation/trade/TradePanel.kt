@@ -44,7 +44,13 @@ class TradePanelActions(
 fun TradePanel(state: TradePanelState, actions: TradePanelActions, modifier: Modifier = Modifier) {
     Card(modifier = modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Choice(TradeSide.entries, state.side, { if (it == TradeSide.BUY) "Buy" else "Sell" }, actions.onSideChange)
+            Choice(
+                TradeSide.entries,
+                state.side,
+                { if (it == TradeSide.BUY) "Buy" else "Sell" },
+                actions.onSideChange,
+                Modifier.fillMaxWidth(),
+            )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = state.amount,
@@ -79,7 +85,7 @@ private fun <T> Choice(
     selected: T,
     label: (T) -> String,
     onSelect: (T) -> Unit,
-    modifier: Modifier = Modifier.fillMaxWidth(),
+    modifier: Modifier = Modifier,
 ) {
     SingleChoiceSegmentedButtonRow(modifier = modifier) {
         options.forEachIndexed { index, option ->
