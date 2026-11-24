@@ -85,6 +85,13 @@ class ChartViewModel(
         }
     }
 
+    fun onOpenTradeSheet() = _uiState.update { it.copy(showTradeSheet = true) }
+
+    fun onCloseTradeSheet() {
+        _uiState.update { it.copy(showTradeSheet = false) }
+        updatePanel { it.copy(confirming = false) }
+    }
+
     fun onSideChange(side: TradeSide) = updatePanel { it.copy(side = side, amount = "") }
 
     fun onUnitChange(unit: AmountUnit) = updatePanel { it.copy(unit = unit, amount = "") }

@@ -10,6 +10,7 @@ import com.ceylonapz.traderlens.presentation.trade.TradePanelState
 data class ChartUiState(
     val portfolio: Portfolio? = null,
     val tradePanel: TradePanelState = TradePanelState(),
+    val showTradeSheet: Boolean = false,
     val interval: KlineInterval = KlineInterval.ONE_MINUTE,
     val candles: List<Candle> = emptyList(),
     val updatedAtMillis: Long? = null,

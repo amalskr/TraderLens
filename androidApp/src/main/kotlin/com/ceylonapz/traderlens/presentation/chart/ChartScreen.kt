@@ -19,7 +19,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -32,9 +36,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.window.core.layout.WindowSizeClass
+import com.ceylonapz.traderlens.R
 import com.ceylonapz.traderlens.domain.model.ConnectionState
 import com.ceylonapz.traderlens.domain.model.KlineInterval
 import com.ceylonapz.traderlens.domain.model.RetryStatus
@@ -50,6 +56,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private val PORTRAIT_CHART_HEIGHT = 320.dp
+private val FAB_CLEARANCE = 72.dp
 
 private val TimeFormat = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
 
@@ -67,43 +74,73 @@ fun ChartScreen(modifier: Modifier = Modifier, viewModel: ChartViewModel = koinV
             onConfirm = viewModel::onConfirm,
         )
     }
-    ChartContent(uiState, tradeActions, viewModel::onIntervalChange, modifier = modifier)
+    ChartContent(
+        uiState = uiState,
+        tradeActions = tradeActions,
+        onIntervalChange = viewModel::onIntervalChange,
+        onOpenTradeSheet = viewModel::onOpenTradeSheet,
+        onCloseTradeSheet = viewModel::onCloseTradeSheet,
+        modifier = modifier,
+    )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChartContent(
     uiState: ChartUiState,
     tradeActions: TradePanelActions,
     onIntervalChange: (KlineInterval) -> Unit,
+    onOpenTradeSheet: () -> Unit,
+    onCloseTradeSheet: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val wide = currentWindowAdaptiveInfoV2().windowSizeClass
         .isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
-    if (wide) { // for fordable screens
-        Row(modifier = modifier.fillMaxSize().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Chart(uiState, onIntervalChange, Modifier.weight(1f).fillMaxHeight())
-            Column(Modifier.width(400.dp).fillMaxHeight().imePadding().verticalScroll(rememberScrollState())) {
-                TradeSection(uiState, tradeActions)
+    Box(modifier.fillMaxSize()) {
+        if (wide) { // for fordable screens
+            Row(Modifier.fillMaxSize().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Chart(uiState, onIntervalChange, Modifier.weight(1f).fillMaxHeight())
+                Column(Modifier.width(400.dp).fillMaxHeight().verticalScroll(rememberScrollState())) {
+                    TradeSection(uiState)
+                    Spacer(Modifier.size(FAB_CLEARANCE))
+                }
+            }
+        } else {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                TradeSection(uiState)
+                Spacer(Modifier.size(16.dp))
+                Chart(uiState, onIntervalChange, Modifier.fillMaxWidth().height(PORTRAIT_CHART_HEIGHT))
+                Spacer(Modifier.size(FAB_CLEARANCE))
             }
         }
-    } else {
-        Column(modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).padding(16.dp)) {
-            TradeSection(uiState, tradeActions)
-            Spacer(Modifier.size(16.dp))
-            Chart(uiState, onIntervalChange, Modifier.fillMaxWidth().height(PORTRAIT_CHART_HEIGHT))
+        FloatingActionButton(
+            onClick = onOpenTradeSheet,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+        ) {
+            Icon(painterResource(R.drawable.ic_trade), contentDescription = "Trade")
+        }
+    }
+    if (uiState.showTradeSheet) {
+        ModalBottomSheet(onDismissRequest = onCloseTradeSheet) {
+            TradePanel(
+                uiState.tradePanel,
+                tradeActions,
+                Modifier
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            )
         }
     }
 }
 
 @Composable
-private fun TradeSection(uiState: ChartUiState, tradeActions: TradePanelActions) {
+private fun TradeSection(uiState: ChartUiState) {
     uiState.tradePanel.blockedBy?.let {
         TradingPausedBanner(it, uiState.connection, uiState.updatedAtMillis)
         Spacer(Modifier.size(12.dp))
     }
     uiState.portfolio?.let { PortfolioCard(it) }
-    Spacer(Modifier.size(12.dp))
-    TradePanel(uiState.tradePanel, tradeActions)
     Spacer(Modifier.size(12.dp))
     StreamStatus(uiState)
 }
