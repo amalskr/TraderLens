@@ -13,7 +13,10 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlin.math.roundToLong
 
-// Values are snapshot state read in the draw phase, so ticks redraw the canvas without recomposing.
+/*
+* Animate 1 : Price slide - price = from + (to - from) × progress
+* Animate 2 : Up/down flash - rising (price up|down)
+* */
 @Stable
 class LastPriceAnimation {
     private val progress = Animatable(1f)
@@ -39,10 +42,12 @@ class LastPriceAnimation {
         openTime = candle.openTimeMillis
 
         launch {
+            //price animate
             progress.snapTo(0f)
             progress.animateTo(1f, tween(SLIDE_MILLIS))
         }
         if (hasPrevious && target != previous) {
+            //flash animate
             rising = target > previous
             launch {
                 flash.snapTo(1f)

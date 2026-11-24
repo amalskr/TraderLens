@@ -52,6 +52,7 @@ fun CandlestickChart(candles: List<Candle>, modifier: Modifier = Modifier) {
             drawCandle(shown, centerX = slotWidth * (index + 0.5f), bodyWidth = slotWidth * 0.7f, y = ::y)
         }
 
+        //drawing price label and line live
         val priceY = y(price.value)
         val lineColor = if (lastPrice.rising) UpColor else DownColor
         drawLine(
@@ -90,7 +91,7 @@ private fun DrawScope.drawPriceLabel(
     x: Float,
     centerY: Float,
 ) {
-    val padding = 4.dp.toPx()
+    val padding = 8.dp.toPx()
     val boxSize = Size(text.size.width + padding * 2, text.size.height + padding)
     val top = (centerY - boxSize.height / 2).coerceIn(0f, max(size.height - boxSize.height, 0f))
     drawRect(color = lerp(color, Color.White, flashAlpha * 0.5f), topLeft = Offset(x, top), size = boxSize)
