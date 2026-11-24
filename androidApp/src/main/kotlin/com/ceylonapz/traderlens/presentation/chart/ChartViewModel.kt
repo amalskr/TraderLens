@@ -61,7 +61,7 @@ class ChartViewModel(
         }
         viewModelScope.launch {
             observeMarket(KlineInterval.ONE_MINUTE, CANDLE_LIMIT).collect { feed ->
-                _uiState.update { it.apply(feed) }
+                _uiState.update { it.apply(feed).copy(updatedAtMillis = feed.updatedAtMillis) }
             }
         }
     }
@@ -131,6 +131,7 @@ class ChartViewModel(
     }
 
     private fun ChartUiState.apply(feed: CandleFeed): ChartUiState = when (val event = feed.event) {
+        CandleFeedEvent.Cached -> copy(candles = feed.candles)
         is CandleFeedEvent.Live -> {
             val openTime = event.candle.openTimeMillis
             copy(

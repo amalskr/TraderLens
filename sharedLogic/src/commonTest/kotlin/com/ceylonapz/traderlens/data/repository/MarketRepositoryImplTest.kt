@@ -1,11 +1,14 @@
 package com.ceylonapz.traderlens.data.repository
 
+import com.ceylonapz.traderlens.data.local.CachedCandles
+import com.ceylonapz.traderlens.data.local.FakeCandleCache
 import com.ceylonapz.traderlens.data.remote.BinanceApi
 import com.ceylonapz.traderlens.data.remote.KlineDto
 import com.ceylonapz.traderlens.data.remote.KlineStream
 import com.ceylonapz.traderlens.data.remote.KlineStreamEvent
 import com.ceylonapz.traderlens.data.remote.createHttpClient
 import com.ceylonapz.traderlens.domain.model.Candle
+import com.ceylonapz.traderlens.domain.model.CandleFeed
 import com.ceylonapz.traderlens.domain.model.CandleFeedEvent
 import com.ceylonapz.traderlens.domain.model.ConnectionState
 import com.ceylonapz.traderlens.domain.model.RetryStatus
@@ -35,6 +38,9 @@ import kotlin.time.TimeSource
 
 class MarketRepositoryImplTest {
 
+    private val cache = FakeCandleCache()
+    private var now = 1_000L
+
     private fun repository(
         vararg events: KlineStreamEvent,
         handler: MockRequestHandler,
@@ -44,7 +50,7 @@ class MarketRepositoryImplTest {
         val stream = object : KlineStream {
             override fun events(interval: KlineInterval): Flow<KlineStreamEvent> = flowOf(*events)
         }
-        return MarketRepositoryImpl(BinanceApi(client), stream, timeSource)
+        return MarketRepositoryImpl(BinanceApi(client), stream, cache, { now }, timeSource)
     }
 
     private fun restKline(openTime: Long, close: String) = """[$openTime,"1","1","1","$close"]"""
@@ -195,7 +201,7 @@ class MarketRepositoryImplTest {
             }
         }
         val client = createHttpClient(enableLogging = false, engine = MockEngine(json("[]")))
-        repo = MarketRepositoryImpl(BinanceApi(client), stream)
+        repo = MarketRepositoryImpl(BinanceApi(client), stream, cache, { now })
 
         assertEquals(ConnectionState.Offline, repo.connectionState.value)
         repo.observeCandles(KlineInterval.ONE_MINUTE, limit = 10).toList()
@@ -260,5 +266,56 @@ class MarketRepositoryImplTest {
         repo.observeCandles(KlineInterval.ONE_MINUTE, limit = 10).toList()
 
         assertNull(repo.latestPrice.value)
+    }
+
+    @Test
+    fun cachedCandlesAreEmittedBeforeConnecting() = runTest {
+        cache.cached = CachedCandles(listOf(candle(1, 100)), updatedAtMillis = 500)
+        val repo = repository(KlineStreamEvent.Disconnected(failures = 1, retryInMillis = 500), handler = json("[]"))
+
+        val emissions = repo.observeCandles(KlineInterval.ONE_MINUTE, limit = 10).toList()
+
+        assertEquals(listOf(CandleFeed(listOf(candle(1, 100)), CandleFeedEvent.Cached, 500)), emissions)
+        assertNull(repo.latestPrice.value)
+    }
+
+    @Test
+    fun gapFillMergesIntoCachedCandles() = runTest {
+        cache.cached = CachedCandles(listOf(candle(1, 100), candle(2, 150)), updatedAtMillis = 500)
+        val repo = repository(KlineStreamEvent.Connected, handler = json("[${restKline(2, "2.00")},${restKline(3, "3.00")}]"))
+
+        val last = repo.observeCandles(KlineInterval.ONE_MINUTE, limit = 10).toList().last()
+
+        assertEquals(CandleFeed(listOf(candle(1, 100), candle(2, 200), candle(3, 300)), CandleFeedEvent.GapFill(added = 1), now), last)
+    }
+
+    @Test
+    fun gapFillAndLiveUpdatesAreSavedWithinTheWindow() = runTest {
+        val repo = repository(
+            KlineStreamEvent.Connected,
+            update(3, "3.00"),
+            handler = json("[${restKline(1, "1.00")},${restKline(2, "2.00")}]"),
+        )
+
+        repo.observeCandles(KlineInterval.ONE_MINUTE, limit = 2).toList()
+
+        assertEquals(
+            listOf(
+                FakeCandleCache.Save(listOf(candle(1, 100), candle(2, 200)), keepFromOpenTime = 1, updatedAtMillis = now),
+                FakeCandleCache.Save(listOf(candle(3, 300)), keepFromOpenTime = 2, updatedAtMillis = now),
+            ),
+            cache.saves,
+        )
+    }
+
+    @Test
+    fun failedGapFillKeepsCachedTimestamp() = runTest {
+        cache.cached = CachedCandles(listOf(candle(1, 100)), updatedAtMillis = 500)
+        val repo = repository(KlineStreamEvent.Connected, handler = { respondError(HttpStatusCode.InternalServerError) })
+
+        val last = repo.observeCandles(KlineInterval.ONE_MINUTE, limit = 10).toList().last()
+
+        assertEquals(CandleFeed(listOf(candle(1, 100)), CandleFeedEvent.GapFillFailed, 500), last)
+        assertTrue(cache.saves.isEmpty())
     }
 }

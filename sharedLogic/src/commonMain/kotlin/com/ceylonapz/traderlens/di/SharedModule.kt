@@ -1,5 +1,7 @@
 package com.ceylonapz.traderlens.di
 
+import com.ceylonapz.traderlens.data.local.CandleCache
+import com.ceylonapz.traderlens.data.local.SqlCandleCache
 import com.ceylonapz.traderlens.data.local.TraderLensDatabase
 import com.ceylonapz.traderlens.data.remote.BinanceApi
 import com.ceylonapz.traderlens.data.remote.BinanceStream
@@ -29,7 +31,10 @@ fun sharedModule(enableLogging: Boolean) = module {
     single { createHttpClient(enableLogging) }
     single { BinanceApi(get()) }
     single<KlineStream> { BinanceStream(get()) }
-    single<MarketRepository> { MarketRepositoryImpl(get(), get()) } bind PriceFeed::class
+    single<CandleCache> { SqlCandleCache(get()) }
+    single<MarketRepository> {
+        MarketRepositoryImpl(get(), get(), get(), nowMillis = { Clock.System.now().toEpochMilliseconds() })
+    } bind PriceFeed::class
     single { TraderLensDatabase(get()) }
     single<WalletRepository> { WalletRepositoryImpl(get()) }
     factory { InitializeWalletUseCase(get()) }

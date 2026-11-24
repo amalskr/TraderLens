@@ -61,7 +61,7 @@ fun ChartScreen(modifier: Modifier = Modifier, viewModel: ChartViewModel = koinV
 private fun ChartContent(uiState: ChartUiState, tradeActions: TradePanelActions, modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         uiState.tradePanel.blockedBy?.let {
-            TradingPausedBanner(it, uiState.connection)
+            TradingPausedBanner(it, uiState.connection, uiState.updatedAtMillis)
             Spacer(Modifier.size(12.dp))
         }
         uiState.portfolio?.let { PortfolioCard(it) }

@@ -1,5 +1,6 @@
 package com.ceylonapz.traderlens.data.repository
 
+import com.ceylonapz.traderlens.data.local.CandleCache
 import com.ceylonapz.traderlens.data.remote.BinanceApi
 import com.ceylonapz.traderlens.data.remote.KlineStream
 import com.ceylonapz.traderlens.data.remote.KlineStreamEvent
@@ -24,6 +25,8 @@ import kotlin.time.TimeSource
 class MarketRepositoryImpl(
     private val api: BinanceApi,
     private val stream: KlineStream,
+    private val cache: CandleCache,
+    private val nowMillis: () -> Long,
     private val timeSource: TimeSource = TimeSource.Monotonic,
 ) : MarketRepository {
 
@@ -52,7 +55,13 @@ class MarketRepositoryImpl(
     //BinanceStream,
     override fun observeCandles(interval: KlineInterval, limit: Int): Flow<CandleFeed> = flow {
         var candles = emptyList<Candle>()
+        var updatedAt: Long? = null
         _connectionState.value = ConnectionState.Reconnecting
+        cache.load(interval, limit)?.let { cached ->
+            candles = cached.candles
+            updatedAt = cached.updatedAtMillis
+            emit(CandleFeed(candles, CandleFeedEvent.Cached, updatedAt))
+        }
         try {
             stream.events(interval).collect { event ->
                 when (event) {
@@ -66,17 +75,23 @@ class MarketRepositoryImpl(
                             onSuccess = { fetched ->
                                 val known = candles.mapTo(HashSet()) { it.openTimeMillis }
                                 candles = candles.merge(fetched).takeLast(limit)
+                                val now = nowMillis()
+                                updatedAt = now
+                                if (candles.isNotEmpty()) cache.save(interval, candles, candles.first().openTimeMillis, now)
                                 CandleFeedEvent.GapFill(added = fetched.count { it.openTimeMillis !in known })
                             },
                             onFailure = { CandleFeedEvent.GapFillFailed },
                         )
-                        emit(CandleFeed(candles, fill))
+                        emit(CandleFeed(candles, fill, updatedAt))
                     }
                     is KlineStreamEvent.Update -> { // load every 2 sec max 200
                         val candle = event.kline.toCandle() ?: return@collect
                         _latestPrice.value = LivePrice(candle.close, timeSource.markNow())
                         candles = candles.merge(candle).takeLast(limit)
-                        emit(CandleFeed(candles, CandleFeedEvent.Live(candle)))
+                        val now = nowMillis()
+                        updatedAt = now
+                        cache.save(interval, listOf(candle), candles.first().openTimeMillis, now)
+                        emit(CandleFeed(candles, CandleFeedEvent.Live(candle), updatedAt))
                     }
                     is KlineStreamEvent.Disconnected -> {
                         _retryStatus.value = RetryStatus(event.failures, event.retryInMillis)

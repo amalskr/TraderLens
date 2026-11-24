@@ -19,7 +19,7 @@ import kotlin.test.assertSame
 
 class ObserveMarketUseCaseTest {
 
-    private val feed = CandleFeed(emptyList(), CandleFeedEvent.GapFill(added = 0))
+    private val feed = CandleFeed(emptyList(), CandleFeedEvent.GapFill(added = 0), updatedAtMillis = null)
 
     private val repository = object : MarketRepository {
         var requested: Pair<KlineInterval, Int>? = null

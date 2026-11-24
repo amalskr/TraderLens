@@ -10,6 +10,7 @@ data class ChartUiState(
     val portfolio: Portfolio? = null,
     val tradePanel: TradePanelState = TradePanelState(),
     val candles: List<Candle> = emptyList(),
+    val updatedAtMillis: Long? = null,
     val connection: ConnectionState = ConnectionState.Offline,
     val retry: RetryStatus? = null,
     val lastUpdatedOpenTime: Long? = null,
