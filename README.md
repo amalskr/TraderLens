@@ -4,6 +4,59 @@ Paper trading simulator for the BTC/USD spot market. Live market data comes from
 
 Built with Kotlin Multiplatform: all business logic lives in a shared module that targets Android and iOS, and the Android app uses Jetpack Compose with Material 3.
 
+## Requirements coverage
+
+✅ fully implemented, ⚠️ partial, ⬜ not done. Paths are under `sharedLogic/src/commonMain` or `androidApp/src/main` unless shown in full.
+
+### Required by the brief
+
+| Item | Status | Where |
+|---|:---:|---|
+| BTC/USD spot market only | ✅ | `data/remote/BinanceApi.kt`, `BinanceStream.kt` (`BTCUSDT` only) |
+| Historical klines via Binance REST on launch, rendered as a candlestick chart | ✅ | `MarketRepositoryImpl.kt` (REST fetch when the stream connects), `presentation/chart/CandlestickChart.kt` |
+| Live price via Binance WebSocket, ticking in real time | ✅ | `data/remote/BinanceStream.kt`, Trade screen |
+| BTCUSDT endpoints, quote currency shown as USD everywhere in the UI | ✅ | `presentation/format/MoneyFormat.kt`, widget label "BTC/USD" |
+| Starting balance 10,000 USD and 0 BTC | ✅ | `domain/model/Wallet.kt` (`INITIAL`), `InitializeWalletUseCase.kt` |
+| Buy and Sell as market orders at the exact latest live WebSocket price | ✅ | `domain/trading/TradingEngine.kt` (price read inside the lock) |
+| Trades execute locally with no network request | ✅ | `TradingEngine.kt`, `data/repository/TradeRepositoryImpl.kt` |
+| Safe wallet updates (debit one wallet, credit the other) | ✅ | `Wallet.afterTrade`, `TradeRepositoryImpl.kt` |
+| Dual wallet balances persisted in a local database | ✅ | `sqldelight/.../Wallet.sq` |
+| Total portfolio value from local BTC and the live price | ✅ | `domain/model/Portfolio.kt`, `presentation/portfolio/PortfolioCard.kt` |
+| Chronological trade ledger persisted | ✅ | `sqldelight/.../Trade.sq`, History screen |
+| Everything survives an app restart | ✅ | SQLite wallet, trades and candle cache; checked on the emulator with force stop and process kill |
+| Built with Kotlin Multiplatform, native Android UI | ✅ | `sharedLogic` (Android and iOS targets), `androidApp` (Jetpack Compose) |
+| Edge cases handled (network loss, errors, volatility) | ✅ | Network loss, reconnect with backoff, gap fill and stale price are handled; errors recover by automatic retry |
+| README with build and run instructions | ✅ | `README.md` |
+| Release APK in dist/ at the repo root | ✅ | `dist/TraderLens-1.0.1.apk`, the same signed APK as GitHub Release `v1.0.1` |
+
+### Beyond the brief
+
+| Item | Status | Where |
+|---|:---:|---|
+| Integer money types (cents and satoshis), no floating point | ✅ | `domain/model/money/` |
+| Atomic trades in one database transaction, Mutex against double spend | ✅ | `TradeRepositoryImpl.kt`, `TradingEngine.kt` |
+| Database CHECK constraints as a backstop | ✅ | `Wallet.sq` (balances never negative), `Trade.sq`, `LastPrice.sq` |
+| Stale price guard (disconnected or price older than the limit) | ✅ | `domain/trading/StalePriceGuard.kt` (10 seconds) |
+| Reconnect with exponential backoff and jitter | ✅ | `data/remote/RetryBackoff.kt` |
+| REST gap fill after reconnect | ✅ | `MarketRepositoryImpl.kt` |
+| Offline launch from cached candles with "last updated" label | ✅ | `data/local/SqlCandleCache.kt`, `presentation/chart/TradingPausedBanner.kt` |
+| Live animated last candle, price line and up/down flash | ✅ | `presentation/chart/LastPriceAnimation.kt`, `CandlestickChart.kt` |
+| Double tap protection | ✅ | `ChartViewModel.onConfirm` (`submitting` guard), engine Mutex |
+| Trade panel with live preview, validation and Max | ✅ | `presentation/trade/TradePanel.kt`, `domain/trading/OrderValidator.kt` |
+| Rotation and process death state restore | ✅ | `ChartViewModel.kt` (`SavedStateHandle`), saveable navigation back stack |
+| Landscape and large screen layout | ✅ | `presentation/chart/ChartScreen.kt` (two panes at 600dp and wider) |
+| Total P&L against the starting balance | ✅ | `Portfolio.profitLoss`, portfolio card and widget |
+| Shared logic verified on iOS (tests and live data on the simulator) | ⚠️ | All 131 common tests pass on the iOS simulator. Missing: no iOS UI, so live data was not shown on the simulator |
+| Unit tests | ✅ | 154 tests in `sharedLogic/src/commonTest` and `androidHostTest`, 0 failures |
+| CI on GitHub Actions, planned CD to Firebase and Play with Slack | ⚠️ | `.github/workflows/release.yml`, [docs/RELEASE_PIPELINE.md](docs/RELEASE_PIPELINE.md): tests, signed APK, tag and GitHub Release on every main push. Missing: Firebase App Distribution, Play upload and Slack notifications |
+
+### Bonus
+
+| Item | Status | Where |
+|---|:---:|---|
+| Kline interval selector | ✅ | `presentation/chart/ChartScreen.kt`, `ChartViewModel.kt` (1m and 15m, cached per interval, kept across process death) |
+| Home screen widget with Glance | ✅ | `presentation/widget/PortfolioWidget.kt`, `WidgetRefresher.kt` (BTC price, portfolio value, P&L, opens the app on tap) |
+
 ## Screenshots
 
 | Trade | Trade sheet | Confirm |
@@ -39,6 +92,8 @@ Requirements:
 * Android SDK with API 37 installed
 * For iOS tests: macOS with Xcode
 
+Minimum Android version: 8.0 (API 26). The app needs internet access for live data, but launches and shows cached data without it.
+
 | Task | Command |
 |---|---|
 | Build debug APK | `./gradlew :androidApp:assembleDebug` |
@@ -69,8 +124,6 @@ Every push to `main` runs [`.github/workflows/release.yml`](.github/workflows/re
 3. Tags the commit `v1.0.<run number>` and creates a GitHub Release with `TraderLens-1.0.<run number>.apk` attached
 
 `dist/` always holds just the APK of the latest release; it is refreshed from that release after each run. Versioning, secrets, the `dist/` refresh command and how to verify a build are in [docs/RELEASE_PIPELINE.md](docs/RELEASE_PIPELINE.md).
-
-Minimum Android version: 8.0 (API 26). The app needs internet access for live data, but launches and shows cached data without it.
 
 ## Architecture
 
@@ -177,66 +230,13 @@ Package root: `com.ceylonapz.traderlens`
 * 154 unit tests in `sharedLogic`: 131 common tests run on both the Android host and the iOS simulator, and 23 database tests run on the Android host (285 test runs in total). They cover money types and parsing, conversions, the trading engine (including concurrency), validation, the stale price guard, candle merge, backoff, the REST and WebSocket repositories, SQLDelight queries, the candle cache and all use cases.
 * The Android UI was checked on an emulator after each step: tests, install, then driving the screens with `adb` (taps, rotation, airplane mode, process kill) and reconciling the wallet against the ledger in the pulled database.
 
-## Assessment checklist
-
-✅ fully implemented, ⚠️ partial, ⬜ not done. Paths are under `sharedLogic/src/commonMain` or `androidApp/src/main` unless shown in full.
-
-### Required by the brief
-
-| Item | Status | Where |
-|---|:---:|---|
-| BTC/USD spot market only | ✅ | `data/remote/BinanceApi.kt`, `BinanceStream.kt` (`BTCUSDT` only) |
-| Historical klines via Binance REST on launch, rendered as a candlestick chart | ✅ | `MarketRepositoryImpl.kt` (REST fetch when the stream connects), `presentation/chart/CandlestickChart.kt` |
-| Live price via Binance WebSocket, ticking in real time | ✅ | `data/remote/BinanceStream.kt`, Trade screen |
-| BTCUSDT endpoints, quote currency shown as USD everywhere in the UI | ✅ | `presentation/format/MoneyFormat.kt`, widget label "BTC/USD" |
-| Starting balance 10,000 USD and 0 BTC | ✅ | `domain/model/Wallet.kt` (`INITIAL`), `InitializeWalletUseCase.kt` |
-| Buy and Sell as market orders at the exact latest live WebSocket price | ✅ | `domain/trading/TradingEngine.kt` (price read inside the lock) |
-| Trades execute locally with no network request | ✅ | `TradingEngine.kt`, `data/repository/TradeRepositoryImpl.kt` |
-| Safe wallet updates (debit one wallet, credit the other) | ✅ | `Wallet.afterTrade`, `TradeRepositoryImpl.kt` |
-| Dual wallet balances persisted in a local database | ✅ | `sqldelight/.../Wallet.sq` |
-| Total portfolio value from local BTC and the live price | ✅ | `domain/model/Portfolio.kt`, `presentation/portfolio/PortfolioCard.kt` |
-| Chronological trade ledger persisted | ✅ | `sqldelight/.../Trade.sq`, History screen |
-| Everything survives an app restart | ✅ | SQLite wallet, trades and candle cache; checked on the emulator with force stop and process kill |
-| Built with Kotlin Multiplatform, native Android UI | ✅ | `sharedLogic` (Android and iOS targets), `androidApp` (Jetpack Compose) |
-| Edge cases handled (network loss, errors, volatility) | ⚠️ | Network loss, reconnect and stale price are handled. Missing: dedicated error screens with a manual retry button (errors recover by automatic retry only) |
-| README with build and run instructions | ✅ | `README.md` |
-| Release APK in dist/ at the repo root | ✅ | `dist/TraderLens-1.0.1.apk`, the same signed APK as GitHub Release `v1.0.1` |
-
-### Beyond the brief
-
-| Item | Status | Where |
-|---|:---:|---|
-| Integer money types (cents and satoshis), no floating point | ✅ | `domain/model/money/` |
-| Atomic trades in one database transaction, Mutex against double spend | ✅ | `TradeRepositoryImpl.kt`, `TradingEngine.kt` |
-| Database CHECK constraints as a backstop | ✅ | `Wallet.sq` (balances never negative), `Trade.sq`, `LastPrice.sq` |
-| Stale price guard (disconnected or price older than the limit) | ✅ | `domain/trading/StalePriceGuard.kt` (10 seconds) |
-| Reconnect with exponential backoff and jitter | ✅ | `data/remote/RetryBackoff.kt` |
-| REST gap fill after reconnect | ✅ | `MarketRepositoryImpl.kt` |
-| Offline launch from cached candles with "last updated" label | ✅ | `data/local/SqlCandleCache.kt`, `presentation/chart/TradingPausedBanner.kt` |
-| Live animated last candle, price line and up/down flash | ✅ | `presentation/chart/LastPriceAnimation.kt`, `CandlestickChart.kt` |
-| Double tap protection | ✅ | `ChartViewModel.onConfirm` (`submitting` guard), engine Mutex |
-| Trade panel with live preview, validation and Max | ✅ | `presentation/trade/TradePanel.kt`, `domain/trading/OrderValidator.kt` |
-| Rotation and process death state restore | ✅ | `ChartViewModel.kt` (`SavedStateHandle`), saveable navigation back stack |
-| Landscape and large screen layout | ✅ | `presentation/chart/ChartScreen.kt` (two panes at 600dp and wider) |
-| Total P&L against the starting balance | ✅ | `Portfolio.profitLoss`, portfolio card and widget |
-| Shared logic verified on iOS (tests and live data on the simulator) | ⚠️ | All 131 common tests pass on the iOS simulator. Missing: no iOS UI, so live data was not shown on the simulator |
-| Unit tests | ✅ | 154 tests in `sharedLogic/src/commonTest` and `androidHostTest`, 0 failures |
-| CI on GitHub Actions, planned CD to Firebase and Play with Slack | ⚠️ | `.github/workflows/release.yml`, [docs/RELEASE_PIPELINE.md](docs/RELEASE_PIPELINE.md): tests, signed APK, tag and GitHub Release on every main push. Missing: Firebase App Distribution, Play upload and Slack notifications |
-
-### Bonus
-
-| Item | Status | Where |
-|---|:---:|---|
-| Kline interval selector | ✅ | `presentation/chart/ChartScreen.kt`, `ChartViewModel.kt` (1m and 15m, cached per interval, kept across process death) |
-| Home screen widget with Glance | ✅ | `presentation/widget/PortfolioWidget.kt`, `WidgetRefresher.kt` (BTC price, portfolio value, P&L, opens the app on tap) |
-
 ## AI usage
 
 This project was built with [Claude Code](https://claude.com/claude-code) as a pair programmer.
 
 * `CLAUDE.md` in the repository holds the rules the assistant followed: architecture boundaries, money rules, edge cases, code style and workflow.
-* Work was done in small steps from a written plan. For each step the assistant proposed and wrote the code and unit tests, ran the tests, installed the app and verified the behaviour on an emulator, then stopped for review.
-* Every change was reviewed, often edited, and committed by hand. Product decisions (for example minSdk 26, dropping UI throttling, the bottom sheet trade panel, the widget refresh strategy) and all new dependencies were approved explicitly before being added.
+* Planed tasks, Reformat and unit tests, ran and verified the behaviour on an emulator, then stopped for review.
+* Product decisions (for example minSdk 26, dropping UI throttling, the bottom sheet trade panel, the widget refresh strategy) and all new dependencies were approved explicitly before being added.
 * The assistant was told to report failures and unverified parts honestly; some of those are listed under known limitations below.
 
 ## Known limitations
@@ -250,4 +250,6 @@ This project was built with [Claude Code](https://claude.com/claude-code) as a p
 * **Diagnostics card:** the Trade screen still shows connection, retry and gap fill details. It is kept on purpose so reviewers can watch reconnects live.
 * **Landscape phone with the keyboard open** leaves little room; the trade sheet scrolls to reach Review.
 * **Widget:** Android limits periodic widget updates to every 30 minutes. The REST refresh while the app is closed is covered by unit tests but was not observed on a device.
+* **Error recovery:** no manual retry button; recovery is automatic with backoff.
+* **Tests:** no ViewModel or UI tests: screens were verified manually on an emulator.
 * **Release build is not minified:** R8 is off to avoid untested keep rules for Ktor, serialization, Koin and SQLDelight, so the APK is about 14 MB.
